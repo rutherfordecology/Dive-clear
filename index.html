@@ -118,6 +118,7 @@
   .tide-chip.low { color: #f0b955; }
   .info-section-title { margin: 14px 0 4px; font-weight: 600; color: var(--text); }
   .info-section-title:first-child { margin-top: 0; }
+  .version { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
   .loc-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
   .loc-tab {
     border: 1px solid var(--card-border);
@@ -186,9 +187,14 @@
       <li>"Gisborne / Wainui" is one combined location, not two &mdash; at Open-Meteo's model resolution here (~9km for swell, ~11km for wind/rain), Wainui's coordinates land in the exact same grid cell as Gisborne town, so a separate Wainui tab would just duplicate these numbers. Makorori is far enough along the coast to fall in a genuinely different cell.</li>
     </ul>
   </details>
+
+  <div class="version" id="version"></div>
 </div>
 
 <script>
+const APP_VERSION = "1.9";
+document.getElementById("version").textContent = `v${APP_VERSION}`;
+
 const LOCATIONS = {
   gisborne: { name: "Gisborne / Wainui", lat: -38.6623, lon: 178.0176 },
   makorori: { name: "Makorori", lat: -38.65, lon: 178.13 },
