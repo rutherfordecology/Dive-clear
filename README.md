@@ -1,7 +1,7 @@
 # Dive Conditions
 
 Checks dive/snorkel conditions against a rule using free Open-Meteo data, for
-five NZ locations:
+seven NZ locations:
 
 | Location | Rule | Basis |
 |---|---|---|
@@ -10,16 +10,27 @@ five NZ locations:
 | Goat Island | Swell < 0.6m, wind (SW-centred, not NW-N-NE) | Derived from iNaturalist photo patterns |
 | Poor Knights | Swell < 1.6m, rain < 15mm/7d | Derived from iNaturalist photo patterns |
 | Wellington (Taputeranga) | Swell < 1.4m, wind (NW-N-NE), rain < 25mm/7d | Derived from iNaturalist photo patterns |
+| Porirua | Swell < 0.9m, wind (SE-centred) | Derived from iNaturalist photo patterns |
+| Bay of Islands | Rain < 25mm/7d only | Derived, smaller sample - more tentative |
 
-The three "derived" locations were calibrated by finding days where one
-observer photographed 3+ distinct fish species at that (no-take) marine
-reserve — strong behavioural evidence of a real dive, regardless of species or
-reserve rules — and comparing swell/wind/rain on those days against random
-days in the same period. Wind isn't assumed to always favour NW-N-NE: each
-site's favourable direction (if any) was found by breaking wind direction into
-16, 8, and 4 compass sectors and checking whether a consistent favoured
-direction held across all three resolutions. See each location's "How this
-rule was derived" note in the app's Info panel for the numbers behind it.
+The five "derived" locations were calibrated by finding days where one
+observer photographed 3+ distinct fish species in the area — strong
+behavioural evidence of a real dive, regardless of species or local fishing
+rules (this works even outside a no-take marine reserve, since anglers rarely
+photograph a diverse haul) — and comparing swell/wind/rain on those days
+against random days in the same period. Not every condition applies at every
+site: only the ones that showed a real, consistent difference are included, so
+some locations skip swell, wind, or rain entirely. Wind isn't assumed to
+always favour NW-N-NE either: each site's favourable direction (if any) was
+found by breaking wind direction into 16, 8, and 4 compass sectors and
+checking whether a consistent favoured direction held across all three
+resolutions - Goat Island and Porirua both turned out to favour a different,
+site-specific direction. Porirua and Bay of Islands were found via a national
+scan (binning ~22,000 NZ fish photos into a grid and ranking cells by the same
+3+-species-day signal) rather than being picked by name; Waikawau, Kaikoura,
+and New Plymouth were checked the same way but didn't have enough data to
+trust a derived rule. See each location's "How this rule was derived" note in
+the app's Info panel for the numbers behind it.
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
   directly or serve it via GitHub Pages. Location tabs at the top (your choice

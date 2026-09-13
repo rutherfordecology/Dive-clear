@@ -193,7 +193,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.14";
+const APP_VERSION = "1.15";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 // Each location's rule is either the user's own calibrated rule (Gisborne,
@@ -288,6 +288,37 @@ const LOCATIONS = {
       "All three conditions showed a real difference: swell (0.90 m vs 1.58 m average), wind (favourable NW-N-NE days more common on dive days &mdash; likely a Cook Strait exposure effect, not the river-plume logic behind Gisborne's version of this rule), and rain (16.4 mm vs 24.1 mm average, trailing 7 days) &mdash; a real rain signal that an earlier, cruder version of this analysis missed entirely at this site.",
     ],
   },
+  porirua: {
+    name: "Porirua", lat: -41.10, lon: 174.83,
+    rule: {
+      swell: { type: "flat", maxM: 0.9 },
+      wind: { enabled: true, requiredDays: 3, windowDays: 5, centerDeg: 157.5, halfWidthDeg: 67.5 },
+      rain: { enabled: false },
+    },
+    ruleText: [
+      "Swell under about 0.9 m.",
+      "Wind predominantly E&rarr;SE&rarr;SW for at least 3 of the last 5 days.",
+    ],
+    notes: [
+      "Found via a national scan rather than a named guess: all NZ Research-Grade fish photos since Oct 2021 were binned into an ~11km grid, and each cell scored by how many days had one observer photograph 3+ species (the same behavioural \"this was a real dive\" signal used elsewhere). This cell, on Porirua's coast, ranked highest of any uncovered area in the country (50 such days in the grid cell; 45 after re-querying with a tighter radius) &mdash; more usable data than Poor Knights had.",
+      "Swell (0.60 m vs 0.85 m average) and wind both showed large differences (Cohen's d around -0.7 for each); rain showed none.",
+      "Wind direction was checked the same way as Goat Island: broken into 16, then 8, then 4 compass sectors. SE/SSE was clearly favoured at every resolution (e.g. 16-point: 30.2% of visited-day wind readings were SSE vs 7.1% of random-day readings) &mdash; another site where the favourable direction is offshore for that specific coastline, this time facing west into Cook Strait's outer approaches rather than south like Wellington's own Taputeranga rule.",
+    ],
+  },
+  bayofislands: {
+    name: "Bay of Islands", lat: -35.19, lon: 174.30,
+    rule: {
+      swell: { enabled: false },
+      wind: { enabled: false },
+      rain: { enabled: true, maxMm: 25, windowDays: 7 },
+    },
+    ruleText: ["Less than 25 mm of rain in the trailing 7 days."],
+    notes: [
+      "Also found via the national grid scan (see Porirua) &mdash; the second-highest-ranked uncovered cell in the country, but with a notably smaller sample: only 28 days had one observer photograph 3+ species, versus 45-125 at the other derived sites. Treat this rule as more tentative than the others.",
+      "Rain was the only condition with a real difference (18.9 mm vs 37.5 mm average, trailing 7 days, Cohen's d -0.65) &mdash; a sizeable effect even at this smaller sample. Swell and wind showed only weak differences (d around -0.3) and aren't confident enough to include, so this site's verdict currently rests on rain alone.",
+      "The swell rule is set to effectively \"always pass\" (999 m) since no reliable threshold could be derived &mdash; the suitability score and Dive verdict here are really just a rain check for now, not a full three-factor rule.",
+    ],
+  },
 };
 
 function loadSavedLocation() {
@@ -343,12 +374,17 @@ function swellThresholdFor(rule, deg) {
 // passed in (harmless if the rule doesn't use them) so callers don't need to
 // know which conditions are active before computing them.
 function evaluateDay(rule, { sH, sDir, windWindow, rainTotal }) {
-  const threshold = swellThresholdFor(rule, sDir);
-  const swellPass = sH != null && sH < threshold;
-  const swellScore = sH != null ? clamp01(1 - sH / threshold) * 100 : 0;
+  const swellEnabled = rule.swell.enabled !== false; // absent key = enabled, matching existing configs
+  const threshold = swellEnabled ? swellThresholdFor(rule, sDir) : null;
+  const swellPass = swellEnabled ? (sH != null && sH < threshold) : null;
+  const swellScore = swellEnabled ? (sH != null ? clamp01(1 - sH / threshold) * 100 : 0) : null;
 
-  const scores = [swellScore];
-  let allPass = swellPass;
+  const scores = [];
+  let allPass = true;
+  if (swellEnabled) {
+    scores.push(swellScore);
+    allPass = allPass && swellPass;
+  }
 
   let windPass = null, windScore = null, favourableCount = null;
   if (rule.wind.enabled) {
@@ -516,7 +552,7 @@ async function loadConditions() {
 
     const evalResult = evaluateDay(rule, { sH, sDir, windWindow, rainTotal });
 
-    const periods = computePeriodSwell(
+    const periods = rule.swell.enabled === false ? [] : computePeriodSwell(
       rule, marine.hourly.time, marine.hourly.swell_wave_height, marine.hourly.swell_wave_direction, mTime[offset]
     );
 
@@ -539,6 +575,18 @@ function render(results) {
     const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : fmtWeekday(r.date);
     const card = document.createElement("div");
     card.className = "card";
+
+    const swellBlock = rule.swell.enabled !== false ? `
+      <div class="rule"><span class="label">Swell</span>
+        <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)}</span>
+      </div>
+      <div class="period-list">${r.periods.map(p => `
+        <div class="period-chip" title="${p.height != null ? p.height.toFixed(2) + 'm from ' + compass(p.dir) : 'no data'}">
+          <span class="period-label">${p.label}</span>
+          <span class="period-swell" style="color:${p.height != null ? scoreColor(p.score) : 'var(--muted)'};">${p.height != null ? p.height.toFixed(1) + 'm' : '?'}</span>
+        </div>
+      `).join('')}</div>
+    ` : '';
 
     const windBlock = rule.wind.enabled ? `
       <div class="rule"><span class="label">Wind (${rule.wind.windowDays}d)</span>
@@ -566,15 +614,7 @@ function render(results) {
         <div class="score-bar"><div style="width:${r.overallScore}%; background:${scoreColor(r.overallScore)};"></div></div>
         <span class="score-label" style="color:${scoreColor(r.overallScore)};">${r.overallScore} &middot; ${scoreLabel(r.overallScore)}</span>
       </div>
-      <div class="rule"><span class="label">Swell</span>
-        <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)}</span>
-      </div>
-      <div class="period-list">${r.periods.map(p => `
-        <div class="period-chip" title="${p.height != null ? p.height.toFixed(2) + 'm from ' + compass(p.dir) : 'no data'}">
-          <span class="period-label">${p.label}</span>
-          <span class="period-swell" style="color:${p.height != null ? scoreColor(p.score) : 'var(--muted)'};">${p.height != null ? p.height.toFixed(1) + 'm' : '?'}</span>
-        </div>
-      `).join('')}</div>
+      ${swellBlock}
       ${windBlock}
       ${rainBlock}
       <div class="rule"><span class="label">Tides</span></div>
@@ -783,11 +823,12 @@ function selectLocation(key) {
 }
 
 function ruleSummaryLine(rule) {
-  const parts = ["swell"];
+  const parts = [];
+  if (rule.swell.enabled !== false) parts.push("swell");
   if (rule.wind.enabled) parts.push("wind");
   if (rule.rain.enabled) parts.push("rain");
   if (parts.length === 1) {
-    return "Only swell is used for this site &mdash; no reliable wind or rain signal was found in the data.";
+    return `Only ${parts[0]} is used for this site &mdash; no reliable signal was found for the other conditions in the data.`;
   }
   return `All ${parts.length} conditions (${parts.join(", ")}) must pass for a day to be called "Dive".`;
 }

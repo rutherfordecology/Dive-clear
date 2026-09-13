@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.15
+- Add a national site-discovery scan: binned all ~22,000 NZ Research-Grade fish photos since Oct 2021 into an ~11km grid and ranked cells by the same "3+ species by one observer in one day" quality signal used for rule derivation, to find genuine hotspots rather than guessing town names.
+- Added two new locations found this way: **Porirua** (swell + wind, ranked higher than Poor Knights had) and **Bay of Islands** (rain only, smaller sample - noted as more tentative).
+- Checked but didn't add: Waikawau, Kaikoura, New Plymouth - each had either too little total data or too few qualifying multi-species days to trust a derived rule.
+- Swell can now be disabled per-location too (previously only wind/rain could be), for sites like Bay of Islands where no reliable swell threshold could be derived - the day cards, scoring, and rule summary text all adapt automatically.
+
 ## v1.14
 - Re-derived the Goat Island, Poor Knights, and Wellington rules using a stronger "visited" proxy: days where one observer photographed 3+ distinct fish species (behavioural evidence of a real dive, regardless of species or reserve status) vs random days. Every effect got stronger than the previous single-photo method, and surfaced a real rain signal at Wellington that the old method missed entirely.
 - Wind rules are no longer tied to a single fixed NW-N-NE arc: added a generalizable favourable-direction system (any centre direction + width). Empirically found Goat Island's favourable wind is centred on SW, not NW-N-NE - confirmed by breaking wind direction into 16, then 8, then 4 compass sectors and checking the result held at every resolution. This fits the same "favourable wind blows offshore" pattern as every other site, just a different compass direction because Goat Island faces NE.
