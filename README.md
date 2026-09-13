@@ -4,8 +4,9 @@ Checks Gisborne, NZ dive conditions against a personal rule (swell height/direct
 5-day wind trend, trailing 7-day rain) using free Open-Meteo data.
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
-  directly or serve it via GitHub Pages. Shows a Dive/No-dive verdict for today,
-  tomorrow and the day after, plus the full breakdown and an assumptions panel.
+  directly or serve it via GitHub Pages. Shows a Dive/No-dive verdict plus a
+  0-100 suitability score for today, tomorrow and the day after, plus the full
+  breakdown and an assumptions panel.
 - **`dive_check.py`** — same rule in Python; sends a heads-up (email and/or a
   phone push notification via [ntfy.sh](https://ntfy.sh)) only on days that
   pass. Run it on a schedule since a static page can't notify you itself.

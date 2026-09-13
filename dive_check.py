@@ -81,19 +81,29 @@ def fetch_conditions():
     threshold = swell_threshold(swell_dir)
     swell_pass = swell_h is not None and swell_h < threshold
 
+    # Suitability score: 0-100 per condition based on margin under threshold,
+    # averaged with equal weighting (see README - this weighting is an assumption,
+    # not based on research into which factor matters most for this coast).
+    swell_score = max(0.0, min(1.0, 1 - swell_h / threshold)) * 100 if swell_h is not None else 0.0
+    wind_score = (favourable_count / 5) * 100
+    rain_score = max(0.0, min(1.0, 1 - rain_total / 30)) * 100
+    overall_score = round((swell_score + wind_score + rain_score) / 3)
+
     return {
         "date": w_time[today_idx],
         "swell_pass": swell_pass, "swell_h": swell_h, "swell_dir": swell_dir, "threshold": threshold,
         "wind_pass": wind_pass, "favourable_count": favourable_count, "wind_window": wind_window,
         "rain_pass": rain_pass, "rain_total": rain_total,
         "all_pass": swell_pass and wind_pass and rain_pass,
+        "overall_score": overall_score,
     }
 
 
 def build_email_body(r):
     wind_chips = ", ".join(compass(d) for d in r["wind_window"])
     return (
-        f"Gisborne dive conditions look good for {r['date']}!\n\n"
+        f"Gisborne dive conditions look good for {r['date']}! "
+        f"Suitability score: {r['overall_score']}/100\n\n"
         f"Swell: {r['swell_h']:.1f} m from {compass(r['swell_dir'])} "
         f"(needed < {r['threshold']} m)\n"
         f"Wind (last 5 days): {r['favourable_count']}/5 days NW-N-NE ({wind_chips})\n"
@@ -130,7 +140,8 @@ def main():
     r = fetch_conditions()
     print(
         f"{r['date']}: swell={r['swell_pass']} wind={r['wind_pass']} "
-        f"rain={r['rain_pass']} -> {'DIVE' if r['all_pass'] else 'no dive'}"
+        f"rain={r['rain_pass']} -> {'DIVE' if r['all_pass'] else 'no dive'} "
+        f"(suitability {r['overall_score']}/100)"
     )
     if not r["all_pass"]:
         print("Conditions don't pass - no notification sent.")

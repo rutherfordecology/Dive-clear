@@ -45,6 +45,10 @@
   }
   .verdict.dive { background: rgba(41,196,106,0.15); color: var(--good); }
   .verdict.no-dive { background: rgba(229,72,77,0.15); color: var(--bad); }
+  .score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .score-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--card-border); overflow: hidden; }
+  .score-bar > div { height: 100%; border-radius: 3px; }
+  .score-label { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
   .rule { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 4px 0; border-top: 1px solid var(--card-border); }
   .rule:first-of-type { border-top: none; }
   .rule .label { color: var(--muted); }
@@ -85,6 +89,15 @@
   </details>
 
   <details>
+    <summary>Suitability score</summary>
+    <ul>
+      <li>Alongside the pass/fail verdict, each day gets a 0&ndash;100 suitability score so you can compare "bad" days to each other, or see how close a "Dive" day was to failing.</li>
+      <li>Each of the three conditions gets its own 0&ndash;100 score based on how much margin it has under its threshold (0 = at or past the limit, 100 = ideal/zero). The overall score is a plain average of the three &mdash; equal weighting, not based on any research into which factor matters most for this coast.</li>
+      <li>The score is informational only &mdash; it doesn't change the Dive/No dive verdict, which still requires all three conditions to individually pass.</li>
+    </ul>
+  </details>
+
+  <details>
     <summary>Assumptions (things I decided, not things you specified)</summary>
     <ul>
       <li>Due-west swell (247.5&deg;&ndash;292.5&deg;) isn't covered by your rule &mdash; treated conservatively using the tighter 1.2 m threshold.</li>
@@ -115,6 +128,24 @@ function swellThreshold(deg) {
   if (d >= 112.5 && d < 247.5) return 1.2;   // S / SW / SE
   if (d >= 292.5 || d < 67.5) return 2.0;    // N / NE / NW
   return 1.2; // due-W (247.5-292.5), not covered by the rule - conservative
+}
+
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+function scoreLabel(score) {
+  if (score >= 80) return "Excellent";
+  if (score >= 60) return "Good";
+  if (score >= 40) return "Marginal";
+  return "Poor";
+}
+
+function scoreColor(score) {
+  if (score >= 80) return "#29c46a";
+  if (score >= 60) return "#8bc23c";
+  if (score >= 40) return "#e0a52c";
+  return "#e5484d";
 }
 
 function fmtDate(iso) {
@@ -169,12 +200,19 @@ async function loadConditions() {
 
     const allPass = windPass && rainPass && swellPass;
 
+    // Suitability score: 0-100 per condition based on margin under threshold,
+    // averaged with equal weighting (see "Suitability score" assumptions panel).
+    const swellScore = sH != null ? clamp01(1 - sH / threshold) * 100 : 0;
+    const windScore = (favourableCount / 5) * 100;
+    const rainScore = clamp01(1 - rainTotal / 30) * 100;
+    const overallScore = Math.round((swellScore + windScore + rainScore) / 3);
+
     results.push({
       date: mTime[offset],
       swellPass, sH, sDir, threshold,
       windPass, favourableCount, windWindow,
       rainPass, rainTotal,
-      allPass
+      allPass, overallScore
     });
   }
   return results;
@@ -195,6 +233,10 @@ function render(results) {
       <h2>${label}</h2>
       <div class="date">${fmtDate(r.date)}</div>
       <div class="verdict ${r.allPass ? 'dive' : 'no-dive'}">${r.allPass ? 'DIVE' : 'NO DIVE'}</div>
+      <div class="score-row">
+        <div class="score-bar"><div style="width:${r.overallScore}%; background:${scoreColor(r.overallScore)};"></div></div>
+        <span class="score-label" style="color:${scoreColor(r.overallScore)};">${r.overallScore} &middot; ${scoreLabel(r.overallScore)}</span>
+      </div>
       <div class="rule"><span class="label">Swell</span>
         <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)} (need &lt; ${r.threshold} m)</span>
       </div>
