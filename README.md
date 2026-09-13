@@ -5,16 +5,21 @@ five NZ locations:
 
 | Location | Rule | Basis |
 |---|---|---|
-| Gisborne / Wainui | Swell 1.2-2.0m (directional), wind, rain | Your own calibrated rule |
+| Gisborne / Wainui | Swell 1.2-2.0m (directional), wind (NW-N-NE), rain | Your own calibrated rule |
 | Makorori | Same as Gisborne | Borrowed (not enough local data to calibrate its own) |
-| Goat Island | Swell < 0.6m only | Derived from iNaturalist photo patterns |
-| Poor Knights | Swell < 1.6m, rain < 20mm/7d | Derived from iNaturalist photo patterns |
-| Wellington (Taputeranga) | Swell < 1.5m, wind | Derived from iNaturalist photo patterns |
+| Goat Island | Swell < 0.6m, wind (SW-centred, not NW-N-NE) | Derived from iNaturalist photo patterns |
+| Poor Knights | Swell < 1.6m, rain < 15mm/7d | Derived from iNaturalist photo patterns |
+| Wellington (Taputeranga) | Swell < 1.4m, wind (NW-N-NE), rain < 25mm/7d | Derived from iNaturalist photo patterns |
 
-The three "derived" locations were calibrated by comparing swell/wind/rain on
-days with a confirmed Research-Grade fish photo at that (no-take) marine
-reserve against random days in the same period — see each location's "How
-this rule was derived" note in the app's Info panel for the numbers behind it.
+The three "derived" locations were calibrated by finding days where one
+observer photographed 3+ distinct fish species at that (no-take) marine
+reserve — strong behavioural evidence of a real dive, regardless of species or
+reserve rules — and comparing swell/wind/rain on those days against random
+days in the same period. Wind isn't assumed to always favour NW-N-NE: each
+site's favourable direction (if any) was found by breaking wind direction into
+16, 8, and 4 compass sectors and checking whether a consistent favoured
+direction held across all three resolutions. See each location's "How this
+rule was derived" note in the app's Info panel for the numbers behind it.
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
   directly or serve it via GitHub Pages. Location tabs at the top (your choice

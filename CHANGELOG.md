@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.14
+- Re-derived the Goat Island, Poor Knights, and Wellington rules using a stronger "visited" proxy: days where one observer photographed 3+ distinct fish species (behavioural evidence of a real dive, regardless of species or reserve status) vs random days. Every effect got stronger than the previous single-photo method, and surfaced a real rain signal at Wellington that the old method missed entirely.
+- Wind rules are no longer tied to a single fixed NW-N-NE arc: added a generalizable favourable-direction system (any centre direction + width). Empirically found Goat Island's favourable wind is centred on SW, not NW-N-NE - confirmed by breaking wind direction into 16, then 8, then 4 compass sectors and checking the result held at every resolution. This fits the same "favourable wind blows offshore" pattern as every other site, just a different compass direction because Goat Island faces NE.
+- Poor Knights' wind signal stayed inconsistent across sector resolutions (a fully offshore island with no single sheltering coastline), so it's left without a wind rule.
+- Updated thresholds: Poor Knights rain tightened to 15mm/7d; Wellington swell tightened to 1.4m and gained a 25mm/7d rain condition.
+
 ## v1.13
 - Add three new locations: Goat Island, Poor Knights, and Wellington (Taputeranga) - each with its own rule derived by comparing swell/wind/rain on days with a confirmed Research-Grade fish photo (at a no-take reserve, so photos = divers not anglers) against random days in the same period.
 - Rules are now fully per-location: each site enables only the conditions that showed a real signal (Goat Island is swell-only; Poor Knights is swell+rain; Wellington is swell+wind), and the day cards, scoring, and Info panel all adapt to show only what's relevant.

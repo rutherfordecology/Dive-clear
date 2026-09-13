@@ -193,7 +193,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.13";
+const APP_VERSION = "1.14";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 // Each location's rule is either the user's own calibrated rule (Gisborne,
@@ -242,14 +242,18 @@ const LOCATIONS = {
     name: "Goat Island", lat: -36.2661, lon: 174.7860,
     rule: {
       swell: { type: "flat", maxM: 0.6 },
-      wind: { enabled: false },
+      wind: { enabled: true, requiredDays: 3, windowDays: 5, centerDeg: 225, halfWidthDeg: 67.5 },
       rain: { enabled: false },
     },
-    ruleText: ["Swell under about 0.6 m."],
+    ruleText: [
+      "Swell under about 0.6 m.",
+      "Wind predominantly SSE&rarr;SW&rarr;WNW (roughly southwest, not the NW-N-NE arc used at Gisborne/Wellington) for at least 3 of the last 5 days.",
+    ],
     notes: [
-      "Derived automatically: compared swell/wind/rain on 156 days with a confirmed Research-Grade fish photo at Goat Island (a no-take marine reserve, so every photo is from a snorkeler/diver) against 156 random days in the same period.",
-      "Swell showed a clear difference (0.41 m average on confirmed dive days vs 0.61 m on random days), and 90% of confirmed dive days had swell under 0.66 m &mdash; 0.6 m was used as a round cutoff near that.",
-      "Wind and rain showed only weak differences at this sheltered, non-river-mouth site and aren't included in the rule.",
+      "Derived automatically: found every day where one observer photographed 3 or more distinct fish species at Goat Island (a no-take marine reserve) &mdash; a diver documenting a proper dive, essentially never an angler &mdash; and compared swell/wind/rain on those 76 days against 76 random days in the same period.",
+      "Swell showed a large difference (0.43 m average on confirmed dive days vs 0.67 m on random days), and 90% of confirmed dive days had swell under 0.64 m &mdash; 0.6 m was used as a round cutoff near that.",
+      "Wind initially looked like an unexplained reversal of Gisborne's rule (NW-N-NE was less common on dive days, not more), so rather than assume a mirrored arc, I broke wind direction down into 16, then 8, then 4 compass sectors and compared visited vs random days at each resolution. SW came out as the clearly favoured direction at every resolution (e.g. 8-point: 25.8% of visited-day wind readings were SW vs 16.1% of random-day readings) &mdash; a consistent, non-fluke result. This fits the same \"favourable wind blows offshore\" pattern as every other site, just a different compass direction because Goat Island faces NE into the Hauraki Gulf rather than SE or S.",
+      "Rain showed only a weak difference and isn't included.",
     ],
   },
   poorknights: {
@@ -257,27 +261,31 @@ const LOCATIONS = {
     rule: {
       swell: { type: "flat", maxM: 1.6 },
       wind: { enabled: false },
-      rain: { enabled: true, maxMm: 20, windowDays: 7 },
+      rain: { enabled: true, maxMm: 15, windowDays: 7 },
     },
-    ruleText: ["Swell under about 1.6 m.", "Less than 20 mm of rain in the trailing 7 days."],
+    ruleText: ["Swell under about 1.6 m.", "Less than 15 mm of rain in the trailing 7 days."],
     notes: [
-      "Derived the same way as Goat Island: 135 confirmed dive days vs 135 random days at this no-take reserve.",
-      "Both swell (1.07 m vs 1.35 m average) and rain (5.2 mm vs 14.4 mm median, trailing 7 days) showed a real difference; wind didn't.",
+      "Derived the same way as Goat Island: 67 days with 3+ species photographed by one observer vs 67 random days at this no-take reserve.",
+      "Both swell (1.08 m vs 1.32 m average) and rain (2.7 mm vs 12.0 mm median, trailing 7 days) showed a real difference, rain more strongly than an earlier, cruder version of this analysis found.",
+      "Wind showed the same reversal seen at Goat Island (NW-N-NE less common on dive days, not more), but breaking it into 16/8/4 compass sectors (the same check that found a solid SW signal at Goat Island) gave an inconsistent \"best\" direction at each resolution here, and a much lower directional concentration overall (this is a fully offshore island with no single sheltering coastline, unlike Goat Island). Left out of the rule as not reliable enough to act on.",
       "This is a boat-access-only site, so \"confirmed dive day\" really reflects the charter operator's own go/no-go call rather than individual diver choice &mdash; the numbers describe when boats actually run, which may be more conservative than your own personal comfort threshold.",
     ],
   },
   wellington: {
     name: "Wellington (Taputeranga)", lat: -41.3592, lon: 174.7670,
     rule: {
-      swell: { type: "flat", maxM: 1.5 },
+      swell: { type: "flat", maxM: 1.4 },
       wind: { enabled: true, requiredDays: 3, windowDays: 5 },
-      rain: { enabled: false },
+      rain: { enabled: true, maxMm: 25, windowDays: 7 },
     },
-    ruleText: ["Swell under about 1.5 m.", "Wind predominantly NW&rarr;N&rarr;NE for at least 3 of the last 5 days."],
+    ruleText: [
+      "Swell under about 1.4 m.",
+      "Wind predominantly NW&rarr;N&rarr;NE for at least 3 of the last 5 days.",
+      "Less than 25 mm of rain in the trailing 7 days.",
+    ],
     notes: [
-      "Derived from 325 confirmed dive days vs 325 random days at Taputeranga Marine Reserve (Island Bay) &mdash; the best-covered site in this whole comparison.",
-      "Swell showed a large difference (0.94 m vs 1.42 m average). Wind also mattered (favourable NW-N-NE days were more common on dive days) &mdash; likely a Cook Strait exposure effect rather than the river-plume logic behind Gisborne's wind rule, but the same directional arc happened to show up as relevant here too.",
-      "Rain showed no meaningful difference at this site and isn't included.",
+      "Derived from 125 days with 3+ species photographed by one observer vs 125 random days at Taputeranga Marine Reserve (Island Bay) &mdash; the best-covered site in this whole comparison, and the strongest result of any site tested.",
+      "All three conditions showed a real difference: swell (0.90 m vs 1.58 m average), wind (favourable NW-N-NE days more common on dive days &mdash; likely a Cook Strait exposure effect, not the river-plume logic behind Gisborne's version of this rule), and rain (16.4 mm vs 24.1 mm average, trailing 7 days) &mdash; a real rain signal that an earlier, cruder version of this analysis missed entirely at this site.",
     ],
   },
 };
@@ -297,9 +305,24 @@ function compass(deg) {
   return dirs[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
 }
 
-function isFavourableWindDir(deg) {
+function windArcLabel(rule) {
+  const center = rule.wind.centerDeg ?? 0;
+  const halfWidth = rule.wind.halfWidthDeg ?? 67.5;
+  return `${compass(center - halfWidth)}&ndash;${compass(center)}&ndash;${compass(center + halfWidth)}`;
+}
+
+// The "favourable" wind arc is per-location, not fixed - Gisborne/Makorori/
+// Wellington all happen to favour NW->N->NE (centered on 0deg/north, 67.5deg
+// half-width, i.e. NW through NE), but that's this coast's geometry, not a
+// universal rule. A rule can override centerDeg/halfWidthDeg to use a
+// different arc entirely.
+function isFavourableWindDirFor(rule, deg) {
+  const center = rule.wind.centerDeg ?? 0;
+  const halfWidth = rule.wind.halfWidthDeg ?? 67.5;
   const d = ((deg % 360) + 360) % 360;
-  return d >= 292.5 || d < 67.5; // NW -> N -> NE arc
+  let diff = Math.abs(d - center);
+  if (diff > 180) diff = 360 - diff;
+  return diff <= halfWidth;
 }
 
 function swellThresholdFor(rule, deg) {
@@ -329,7 +352,7 @@ function evaluateDay(rule, { sH, sDir, windWindow, rainTotal }) {
 
   let windPass = null, windScore = null, favourableCount = null;
   if (rule.wind.enabled) {
-    favourableCount = windWindow.filter(isFavourableWindDir).length;
+    favourableCount = windWindow.filter(d => isFavourableWindDirFor(rule, d)).length;
     windPass = favourableCount >= rule.wind.requiredDays;
     windScore = (favourableCount / rule.wind.windowDays) * 100;
     scores.push(windScore);
@@ -519,10 +542,10 @@ function render(results) {
 
     const windBlock = rule.wind.enabled ? `
       <div class="rule"><span class="label">Wind (${rule.wind.windowDays}d)</span>
-        <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/${rule.wind.windowDays} days NW&ndash;N&ndash;NE</span>
+        <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/${rule.wind.windowDays} days ${windArcLabel(rule)}</span>
       </div>
       <div class="wind-chips">${r.windWindow.map(d => {
-        const ok = isFavourableWindDir(d);
+        const ok = isFavourableWindDirFor(rule, d);
         return `<span class="chip ${ok ? 'ok' : 'no'}">${compass(d)}</span>`;
       }).join('')}</div>
     ` : '';
