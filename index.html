@@ -69,6 +69,45 @@
   details ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
   #status { color: var(--muted); font-size: 0.9rem; }
   a { color: var(--accent); }
+  .history {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 14px 18px 18px;
+    margin-bottom: 16px;
+  }
+  .history h2 { margin: 0 0 2px; font-size: 1.05rem; }
+  .history-range { color: var(--muted); font-size: 0.8rem; text-align: center; margin-bottom: 10px; }
+  .history-row { display: flex; align-items: stretch; gap: 8px; }
+  .hist-btn {
+    flex: 0 0 auto;
+    width: 34px;
+    border: none;
+    border-radius: 8px;
+    background: var(--card-border);
+    color: var(--text);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+  }
+  .hist-btn:active { background: var(--accent); }
+  .hist-btn:disabled { opacity: 0.3; cursor: default; background: var(--card-border); }
+  .history-chart-wrap { flex: 1; min-width: 0; }
+  .history-chart { display: flex; align-items: flex-end; height: 100px; gap: 2px; }
+  .hist-bar-col { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; }
+  .hist-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; }
+  .hist-dive-dot {
+    position: absolute;
+    left: 50%;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--good);
+    transform: translate(-50%, -8px);
+  }
+  .history-labels { display: flex; gap: 2px; margin-top: 4px; }
+  .hist-label-col { flex: 1; min-width: 0; font-size: 0.6rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; }
 </style>
 </head>
 <body>
@@ -108,6 +147,19 @@
       <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
     </ul>
   </details>
+
+  <div class="history">
+    <h2>Suitability history</h2>
+    <div class="history-range" id="historyRange">Loading history&hellip;</div>
+    <div class="history-row">
+      <button class="hist-btn" id="histLeft" aria-label="Scroll earlier" disabled>&lsaquo;</button>
+      <div class="history-chart-wrap">
+        <div class="history-chart" id="historyChart"></div>
+        <div class="history-labels" id="historyLabels"></div>
+      </div>
+      <button class="hist-btn" id="histRight" aria-label="Scroll later" disabled>&rsaquo;</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -258,6 +310,163 @@ loadConditions()
   .then(render)
   .catch(err => {
     document.getElementById("status").textContent = "Couldn't load conditions: " + err.message;
+  });
+
+// --- Suitability history chart ---
+
+const HIST_YEARS = 2;
+const HIST_WINDOW = 30;
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtDateShort(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function fmtDateLong(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+async function loadHistory() {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - (HIST_YEARS * 365 + 7)); // +7 day buffer for rolling windows
+  const startStr = isoDate(start);
+  const endStr = isoDate(today);
+
+  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}` +
+    `&daily=swell_wave_height_max,swell_wave_direction_dominant&timezone=auto` +
+    `&start_date=${startStr}&end_date=${endStr}`;
+  const weatherUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${LAT}&longitude=${LON}` +
+    `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto` +
+    `&start_date=${startStr}&end_date=${endStr}`;
+
+  const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
+  if (!marineRes.ok || !weatherRes.ok) throw new Error("Historical data request failed");
+  const marine = await marineRes.json();
+  const weather = await weatherRes.json();
+
+  const time = weather.daily.time;
+  const windDir = weather.daily.winddirection_10m_dominant;
+  const rain = weather.daily.precipitation_sum;
+  const swellH = marine.daily.swell_wave_height_max;
+  const swellDir = marine.daily.swell_wave_direction_dominant;
+
+  const history = [];
+  for (let i = 7; i < time.length; i++) {
+    const windWindow = windDir.slice(Math.max(0, i - 4), i + 1);
+    if (windWindow.some(d => d == null)) continue;
+    const favourableCount = windWindow.filter(isFavourableWindDir).length;
+    const windPass = favourableCount >= 4;
+
+    const rainWindow = rain.slice(Math.max(0, i - 7), i);
+    if (rainWindow.some(v => v == null)) continue;
+    const rainTotal = rainWindow.reduce((a, b) => a + b, 0);
+    const rainPass = rainTotal < 30;
+
+    const sH = swellH[i];
+    const sDir = swellDir[i];
+    if (sH == null || sDir == null) continue;
+    const threshold = swellThreshold(sDir);
+    const swellPass = sH < threshold;
+
+    const swellScore = clamp01(1 - sH / threshold) * 100;
+    const windScore = (favourableCount / 5) * 100;
+    const rainScore = clamp01(1 - rainTotal / 30) * 100;
+    const overallScore = Math.round((swellScore + windScore + rainScore) / 3);
+
+    history.push({
+      date: time[i],
+      allPass: swellPass && windPass && rainPass,
+      overallScore,
+    });
+  }
+  return history;
+}
+
+let historyData = [];
+let windowEnd = 0; // index into historyData of the last (most recent) visible day
+
+function renderHistoryChart() {
+  const start = windowEnd - HIST_WINDOW + 1;
+  const slice = historyData.slice(start, windowEnd + 1);
+
+  const chartEl = document.getElementById("historyChart");
+  chartEl.innerHTML = slice.map(d => `
+    <div class="hist-bar-col" title="${fmtDateLong(d.date)}: ${d.overallScore}/100${d.allPass ? ' (DIVE)' : ''}">
+      ${d.allPass ? `<div class="hist-dive-dot" style="bottom:${d.overallScore}%;"></div>` : ""}
+      <div class="hist-bar" style="height:${d.overallScore}%; background:${scoreColor(d.overallScore)};"></div>
+    </div>
+  `).join("");
+
+  const labelsEl = document.getElementById("historyLabels");
+  labelsEl.innerHTML = slice.map((d, idx) => {
+    const show = idx % 5 === 0 || idx === slice.length - 1;
+    return `<div class="hist-label-col">${show ? fmtDateShort(d.date) : ""}</div>`;
+  }).join("");
+
+  document.getElementById("historyRange").textContent =
+    `${fmtDateLong(slice[0].date)} – ${fmtDateLong(slice[slice.length - 1].date)}`;
+
+  document.getElementById("histLeft").disabled = start <= 0;
+  document.getElementById("histRight").disabled = windowEnd >= historyData.length - 1;
+}
+
+function stepHistory(delta) {
+  const newEnd = Math.min(historyData.length - 1, Math.max(HIST_WINDOW - 1, windowEnd + delta));
+  if (newEnd === windowEnd) return false;
+  windowEnd = newEnd;
+  renderHistoryChart();
+  return true;
+}
+
+function setupHoldButton(el, delta) {
+  let holdTimer = null;
+  let active = false;
+  let speed = 0;
+
+  function loop() {
+    if (!active) return;
+    const moved = stepHistory(delta);
+    if (!moved) { stopHold(); return; }
+    speed = Math.max(35, speed * 0.85);
+    holdTimer = setTimeout(loop, speed);
+  }
+
+  function startHold(e) {
+    e.preventDefault();
+    if (active) return;
+    active = true;
+    speed = 300;
+    stepHistory(delta); // immediate first step
+    holdTimer = setTimeout(loop, 400); // pause before auto-repeat kicks in
+  }
+
+  function stopHold() {
+    active = false;
+    clearTimeout(holdTimer);
+    holdTimer = null;
+  }
+
+  el.addEventListener("mousedown", startHold);
+  el.addEventListener("touchstart", startHold, { passive: false });
+  ["mouseup", "mouseleave", "touchend", "touchcancel"].forEach(evt => el.addEventListener(evt, stopHold));
+}
+
+loadHistory()
+  .then(history => {
+    historyData = history;
+    windowEnd = historyData.length - 1;
+    renderHistoryChart();
+    setupHoldButton(document.getElementById("histLeft"), -1);
+    setupHoldButton(document.getElementById("histRight"), 1);
+  })
+  .catch(err => {
+    document.getElementById("historyRange").textContent = "Couldn't load history: " + err.message;
   });
 </script>
 </body>
