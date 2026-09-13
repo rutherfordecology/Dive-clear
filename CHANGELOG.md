@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.11
+- Add a Morning/Midday/Afternoon swell breakdown per day, using hourly swell data instead of just the daily max/dominant-direction figures.
+
 ## v1.10
 - Fix history chart date labels being clipped by `overflow: hidden` on very narrow per-day columns.
 

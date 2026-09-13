@@ -116,6 +116,10 @@
   .tide-chip { font-size: 0.7rem; padding: 2px 6px; border-radius: 6px; background: var(--card-border); }
   .tide-chip.high { color: #6fb3ff; }
   .tide-chip.low { color: #f0b955; }
+  .period-list { display: flex; gap: 4px; margin-top: 4px; }
+  .period-chip { flex: 1; border-radius: 6px; padding: 4px 6px; text-align: center; background: var(--card-border); }
+  .period-chip .period-label { font-size: 0.65rem; color: var(--muted); display: block; }
+  .period-chip .period-swell { font-size: 0.75rem; font-weight: 600; display: block; }
   .info-section-title { margin: 14px 0 4px; font-weight: 600; color: var(--text); }
   .info-section-title:first-child { margin-top: 0; }
   .version { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
@@ -182,6 +186,7 @@
       <li>For a given evaluation day, the "last 5 days" window ends on and includes that day itself (using forecast wind direction for future days).</li>
       <li>The 7-day rain window ends on and includes the day before the evaluation day (i.e. it doesn't count rain forecast to fall later on the evaluation day itself).</li>
       <li>Swell figures use Open-Meteo's <code>swell_wave_height_max</code> / <code>swell_wave_direction_dominant</code> (the swell component only, not wind-chop or combined wave height).</li>
+      <li>The Morning/Midday/Afternoon swell breakdown uses fixed clock-hour bands (6-10am, 11am-1pm, 2-5pm) &mdash; not tied to tide, daylight, or when you'd actually plan to dive. Each period's figure is the average hourly swell height and a circular-mean direction across its hours, not a max.</li>
       <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
       <li>Tide times/heights come from Open-Meteo's modeled sea level curve (<code>sea_level_height_msl</code>, hourly), not an official NZ tide table &mdash; highs/lows are found by scanning for turning points in that curve, so times are only accurate to the nearest hour, and heights are relative to mean sea level rather than a navigational chart datum. Cross-check LINZ or MetService if you need precise tide timing.</li>
       <li>"Gisborne / Wainui" is one combined location, not two &mdash; at Open-Meteo's model resolution here (~9km for swell, ~11km for wind/rain), Wainui's coordinates land in the exact same grid cell as Gisborne town, so a separate Wainui tab would just duplicate these numbers. Makorori is far enough along the coast to fall in a genuinely different cell.</li>
@@ -192,7 +197,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.10";
+const APP_VERSION = "1.11";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 const LOCATIONS = {
@@ -273,6 +278,43 @@ function fmtTime(hourlyIso) {
   return `${h12}:${String(m).padStart(2, "0")}${ampm}`;
 }
 
+function circularMeanDeg(degrees) {
+  const rad = degrees.map(d => (d * Math.PI) / 180);
+  const sinSum = rad.reduce((a, r) => a + Math.sin(r), 0);
+  const cosSum = rad.reduce((a, r) => a + Math.cos(r), 0);
+  const mean = (Math.atan2(sinSum, cosSum) * 180) / Math.PI;
+  return ((mean % 360) + 360) % 360;
+}
+
+// Fixed clock-hour bands for the intraday swell breakdown. Somewhat arbitrary
+// (a diver's own "morning" may differ) - change these if they don't match
+// when you'd actually plan a dive.
+const DAY_PERIODS = [
+  { key: "morning", label: "Morning", hours: [6, 7, 8, 9, 10] },
+  { key: "midday", label: "Midday", hours: [11, 12, 13] },
+  { key: "afternoon", label: "Afternoon", hours: [14, 15, 16, 17] },
+];
+
+function computePeriodSwell(hourlyTimes, heights, dirs, dateStr) {
+  return DAY_PERIODS.map(period => {
+    const idxs = [];
+    hourlyTimes.forEach((t, i) => {
+      if (dateOf(t) === dateStr && period.hours.includes(Number(t.split("T")[1].split(":")[0]))) {
+        idxs.push(i);
+      }
+    });
+    const hVals = idxs.map(i => heights[i]).filter(v => v != null);
+    const dVals = idxs.map(i => dirs[i]).filter(v => v != null);
+    if (!hVals.length) return { ...period, height: null, dir: null, score: 0, pass: false, threshold: null };
+    const avgHeight = hVals.reduce((a, b) => a + b, 0) / hVals.length;
+    const dir = circularMeanDeg(dVals);
+    const threshold = swellThreshold(dir);
+    const pass = avgHeight < threshold;
+    const score = clamp01(1 - avgHeight / threshold) * 100;
+    return { ...period, height: avgHeight, dir, threshold, pass, score };
+  });
+}
+
 function findTideExtremes(times, heights) {
   const extremes = [];
   for (let i = 1; i < heights.length - 1; i++) {
@@ -291,7 +333,8 @@ async function loadConditions() {
   const { lat, lon } = LOCATIONS[currentLocKey];
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
     `&daily=swell_wave_height_max,swell_wave_direction_dominant` +
-    `&hourly=sea_level_height_msl&timezone=auto&forecast_days=${FORECAST_DAYS}`;
+    `&hourly=sea_level_height_msl,swell_wave_height,swell_wave_direction` +
+    `&timezone=auto&forecast_days=${FORECAST_DAYS}`;
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto&past_days=7&forecast_days=${FORECAST_DAYS}`;
 
@@ -350,6 +393,10 @@ async function loadConditions() {
     const rainScore = clamp01(1 - rainTotal / 30) * 100;
     const overallScore = Math.round((swellScore + windScore + rainScore) / 3);
 
+    const periods = computePeriodSwell(
+      marine.hourly.time, marine.hourly.swell_wave_height, marine.hourly.swell_wave_direction, mTime[offset]
+    );
+
     results.push({
       date: mTime[offset],
       swellPass, sH, sDir, threshold,
@@ -357,6 +404,7 @@ async function loadConditions() {
       rainPass, rainTotal,
       allPass, overallScore,
       tides: tidesByDate[mTime[offset]] || [],
+      periods,
     });
   }
   return results;
@@ -386,6 +434,12 @@ function render(results) {
       <div class="rule"><span class="label">Swell</span>
         <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)}</span>
       </div>
+      <div class="period-list">${r.periods.map(p => `
+        <div class="period-chip" title="${p.height != null ? p.height.toFixed(2) + 'm from ' + compass(p.dir) : 'no data'}">
+          <span class="period-label">${p.label}</span>
+          <span class="period-swell" style="color:${p.height != null ? scoreColor(p.score) : 'var(--muted)'};">${p.height != null ? p.height.toFixed(1) + 'm' : '?'}</span>
+        </div>
+      `).join('')}</div>
       <div class="rule"><span class="label">Wind (5d)</span>
         <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/5 days NW&ndash;N&ndash;NE</span>
       </div>
