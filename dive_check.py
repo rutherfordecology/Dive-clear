@@ -139,7 +139,7 @@ def main():
     subject = f"Dive conditions good for {r['date']} - Gisborne"
     body = build_email_body(r)
 
-    if os.environ.get("EMAIL_USER"):
+    if os.environ.get("EMAIL_USER") and os.environ.get("EMAIL_PASS") and os.environ.get("EMAIL_TO"):
         send_email(subject, body)
         print("Email sent.")
 
