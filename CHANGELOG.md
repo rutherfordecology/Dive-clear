@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.10
+- Fix history chart date labels being clipped by `overflow: hidden` on very narrow per-day columns.
+
 ## v1.9
 - Add a visible version number to the dashboard footer.
 

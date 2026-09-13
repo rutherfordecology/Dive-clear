@@ -111,7 +111,7 @@
     transform: translate(-50%, -8px);
   }
   .history-labels { display: flex; gap: 2px; margin-top: 4px; }
-  .hist-label-col { flex: 1; min-width: 0; font-size: 0.6rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; }
+  .hist-label-col { flex: 1; min-width: 0; font-size: 0.6rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: visible; position: relative; }
   .tide-list { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
   .tide-chip { font-size: 0.7rem; padding: 2px 6px; border-radius: 6px; background: var(--card-border); }
   .tide-chip.high { color: #6fb3ff; }
@@ -192,7 +192,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.9";
+const APP_VERSION = "1.10";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 const LOCATIONS = {
