@@ -120,7 +120,7 @@
   <details>
     <summary>Rule</summary>
     <ul>
-      <li>Swell &lt; 1.2 m if arriving from S / SW / SE, or &lt; 2.0 m if from N / NE / NW.</li>
+      <li>Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.</li>
       <li>Wind predominantly NW&rarr;N&rarr;NE for the last 5 days.</li>
       <li>Less than 30 mm of rain in the trailing 7 days.</li>
       <li>All three must pass for a day to be called "Dive".</li>
@@ -139,7 +139,7 @@
   <details>
     <summary>Assumptions (things I decided, not things you specified)</summary>
     <ul>
-      <li>Due-west swell (247.5&deg;&ndash;292.5&deg;) isn't covered by your rule &mdash; treated conservatively using the tighter 1.2 m threshold.</li>
+      <li>The original rule gave two fixed swell thresholds (1.2 m for S/SW/SE, 2.0 m for N/NE/NW) with no rule for the boundary directions. That's now a smooth linear interpolation by angular distance from north (1.2 m at due south, 2.0 m at due north, ~1.6 m at due east/west) &mdash; direction has a continuous effect instead of a hard jump, and northern-arc swell still counts for less, just gradually rather than via a step change.</li>
       <li>"Predominantly NW&rarr;N&rarr;NE for 5 days" is implemented as: at least 4 of the last 5 days had a dominant wind direction inside the 292.5&deg;&ndash;67.5&deg; arc. This 4-of-5 threshold is my assumption &mdash; change it in the code if you meant something stricter or looser.</li>
       <li>For a given evaluation day, the "last 5 days" window ends on and includes that day itself (using forecast wind direction for future days).</li>
       <li>The 7-day rain window ends on and includes the day before the evaluation day (i.e. it doesn't count rain forecast to fall later on the evaluation day itself).</li>
@@ -177,9 +177,14 @@ function isFavourableWindDir(deg) {
 
 function swellThreshold(deg) {
   const d = ((deg % 360) + 360) % 360;
-  if (d >= 112.5 && d < 247.5) return 1.2;   // S / SW / SE
-  if (d >= 292.5 || d < 67.5) return 2.0;    // N / NE / NW
-  return 1.2; // due-W (247.5-292.5), not covered by the rule - conservative
+  // Smooth interpolation instead of a hard S/SW/SE-vs-N/NE/NW split: the threshold
+  // rises from 1.2m (swell from due south, full impact on this coast) to 2.0m
+  // (swell from due north, dampened impact), based on angular distance from north.
+  // This removes the discontinuity at the old arc boundaries and the ad-hoc
+  // "due-west" special case - west now just falls naturally partway between.
+  const distFromNorth = Math.min(d, 360 - d); // 0 at north, 180 at south
+  const leniencyFrac = 1 - distFromNorth / 180; // 1 at north, 0 at south
+  return 1.2 + (2.0 - 1.2) * leniencyFrac;
 }
 
 function clamp01(x) {
@@ -290,7 +295,7 @@ function render(results) {
         <span class="score-label" style="color:${scoreColor(r.overallScore)};">${r.overallScore} &middot; ${scoreLabel(r.overallScore)}</span>
       </div>
       <div class="rule"><span class="label">Swell</span>
-        <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)} (need &lt; ${r.threshold} m)</span>
+        <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)} (need &lt; ${r.threshold.toFixed(2)} m)</span>
       </div>
       <div class="rule"><span class="label">Wind (5d)</span>
         <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/5 days NW&ndash;N&ndash;NE</span>

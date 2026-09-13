@@ -6,8 +6,8 @@ notification via ntfy.sh if NTFY_TOPIC is set. Meant to run on a schedule
 (see .github/workflows/dive-check.yml) since this has no server of its own.
 
 Rule:
-  - Swell < 1.2 m if from S/SW/SE, or < 2.0 m if from N/NE/NW
-    (due-W swell isn't covered by the rule -> treated conservatively as 1.2 m)
+  - Swell threshold scales smoothly from 1.2 m (due south) to 2.0 m (due north)
+    based on swell direction, rather than a hard S/SW/SE-vs-N/NE/NW split
   - Wind predominantly NW->N->NE for the last 5 days
     (implemented as: at least 4 of the last 5 days' dominant wind direction
     fell in that arc - this threshold is an assumption, not specified)
@@ -52,11 +52,12 @@ def is_favourable_wind_dir(deg):
 
 def swell_threshold(deg):
     d = ((deg % 360) + 360) % 360
-    if 112.5 <= d < 247.5:
-        return 1.2  # S / SW / SE
-    if d >= 292.5 or d < 67.5:
-        return 2.0  # N / NE / NW
-    return 1.2  # due-W, not covered by the rule - conservative
+    # Smooth interpolation instead of a hard S/SW/SE-vs-N/NE/NW split: the threshold
+    # rises from 1.2m (swell from due south, full impact on this coast) to 2.0m
+    # (swell from due north, dampened impact), based on angular distance from north.
+    dist_from_north = min(d, 360 - d)  # 0 at north, 180 at south
+    leniency_frac = 1 - dist_from_north / 180  # 1 at north, 0 at south
+    return 1.2 + (2.0 - 1.2) * leniency_frac
 
 
 def fetch_conditions():
@@ -105,7 +106,7 @@ def build_email_body(r):
         f"Gisborne dive conditions look good for {r['date']}! "
         f"Suitability score: {r['overall_score']}/100\n\n"
         f"Swell: {r['swell_h']:.1f} m from {compass(r['swell_dir'])} "
-        f"(needed < {r['threshold']} m)\n"
+        f"(needed < {r['threshold']:.2f} m)\n"
         f"Wind (last 5 days): {r['favourable_count']}/5 days NW-N-NE ({wind_chips})\n"
         f"Rain (trailing 7 days): {r['rain_total']:.1f} mm (needed < 30 mm)\n"
     )
