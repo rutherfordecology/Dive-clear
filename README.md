@@ -5,10 +5,11 @@ Checks Gisborne, NZ dive conditions against a personal rule (swell height/direct
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
   directly or serve it via GitHub Pages. Shows a Dive/No-dive verdict plus a
-  0-100 suitability score for today, tomorrow and the day after, plus the full
-  breakdown, an assumptions panel, and a scrollable chart of the suitability
-  score over the last 2 years (30 days at a time; hold the arrows to scroll
-  faster).
+  0-100 suitability score for today and the next 3 days, the full breakdown
+  (including high/low tide times and heights), a scrollable chart of the
+  suitability score over the last 2 years (30 days at a time; hold the arrows
+  to scroll faster), and an Info dropdown with the rule, scoring method, and
+  assumptions.
 - **`dive_check.py`** — same rule in Python; sends a heads-up (email and/or a
   phone push notification via [ntfy.sh](https://ntfy.sh)) only on days that
   pass. Run it on a schedule since a static page can't notify you itself.

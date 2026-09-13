@@ -108,6 +108,12 @@
   }
   .history-labels { display: flex; gap: 2px; margin-top: 4px; }
   .hist-label-col { flex: 1; min-width: 0; font-size: 0.6rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; }
+  .tide-list { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+  .tide-chip { font-size: 0.7rem; padding: 2px 6px; border-radius: 6px; background: var(--card-border); }
+  .tide-chip.high { color: #6fb3ff; }
+  .tide-chip.low { color: #f0b955; }
+  .info-section-title { margin: 14px 0 4px; font-weight: 600; color: var(--text); }
+  .info-section-title:first-child { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -116,37 +122,6 @@
   <div class="sub">-38.6623, 178.0176 &middot; data: Open-Meteo (marine + weather forecast)</div>
   <div id="status">Loading live conditions&hellip;</div>
   <div class="days" id="days" style="display:none;"></div>
-
-  <details>
-    <summary>Rule</summary>
-    <ul>
-      <li>Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.</li>
-      <li>Wind predominantly NW&rarr;N&rarr;NE for the last 5 days.</li>
-      <li>Less than 30 mm of rain in the trailing 7 days.</li>
-      <li>All three must pass for a day to be called "Dive".</li>
-    </ul>
-  </details>
-
-  <details>
-    <summary>Suitability score</summary>
-    <ul>
-      <li>Alongside the pass/fail verdict, each day gets a 0&ndash;100 suitability score so you can compare "bad" days to each other, or see how close a "Dive" day was to failing.</li>
-      <li>Each of the three conditions gets its own 0&ndash;100 score based on how much margin it has under its threshold (0 = at or past the limit, 100 = ideal/zero). The overall score is a plain average of the three &mdash; equal weighting, not based on any research into which factor matters most for this coast.</li>
-      <li>The score is informational only &mdash; it doesn't change the Dive/No dive verdict, which still requires all three conditions to individually pass.</li>
-    </ul>
-  </details>
-
-  <details>
-    <summary>Assumptions (things I decided, not things you specified)</summary>
-    <ul>
-      <li>The original rule gave two fixed swell thresholds (1.2 m for S/SW/SE, 2.0 m for N/NE/NW) with no rule for the boundary directions. That's now a smooth linear interpolation by angular distance from north (1.2 m at due south, 2.0 m at due north, ~1.6 m at due east/west) &mdash; direction has a continuous effect instead of a hard jump, and northern-arc swell still counts for less, just gradually rather than via a step change.</li>
-      <li>"Predominantly NW&rarr;N&rarr;NE for 5 days" is implemented as: at least 4 of the last 5 days had a dominant wind direction inside the 292.5&deg;&ndash;67.5&deg; arc. This 4-of-5 threshold is my assumption &mdash; change it in the code if you meant something stricter or looser.</li>
-      <li>For a given evaluation day, the "last 5 days" window ends on and includes that day itself (using forecast wind direction for future days).</li>
-      <li>The 7-day rain window ends on and includes the day before the evaluation day (i.e. it doesn't count rain forecast to fall later on the evaluation day itself).</li>
-      <li>Swell figures use Open-Meteo's <code>swell_wave_height_max</code> / <code>swell_wave_direction_dominant</code> (the swell component only, not wind-chop or combined wave height).</li>
-      <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
-    </ul>
-  </details>
 
   <div class="history">
     <h2>Suitability history</h2>
@@ -160,6 +135,36 @@
       <button class="hist-btn" id="histRight" aria-label="Scroll later" disabled>&rsaquo;</button>
     </div>
   </div>
+
+  <details>
+    <summary>Info</summary>
+
+    <p class="info-section-title">Rule</p>
+    <ul>
+      <li>Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.</li>
+      <li>Wind predominantly NW&rarr;N&rarr;NE for the last 5 days.</li>
+      <li>Less than 30 mm of rain in the trailing 7 days.</li>
+      <li>All three must pass for a day to be called "Dive".</li>
+    </ul>
+
+    <p class="info-section-title">Suitability score</p>
+    <ul>
+      <li>Alongside the pass/fail verdict, each day gets a 0&ndash;100 suitability score so you can compare "bad" days to each other, or see how close a "Dive" day was to failing.</li>
+      <li>Each of the three conditions gets its own 0&ndash;100 score based on how much margin it has under its threshold (0 = at or past the limit, 100 = ideal/zero). The overall score is a plain average of the three &mdash; equal weighting, not based on any research into which factor matters most for this coast.</li>
+      <li>The score is informational only &mdash; it doesn't change the Dive/No dive verdict, which still requires all three conditions to individually pass.</li>
+    </ul>
+
+    <p class="info-section-title">Assumptions (things I decided, not things you specified)</p>
+    <ul>
+      <li>The original rule gave two fixed swell thresholds (1.2 m for S/SW/SE, 2.0 m for N/NE/NW) with no rule for the boundary directions. That's now a smooth linear interpolation by angular distance from north (1.2 m at due south, 2.0 m at due north, ~1.6 m at due east/west) &mdash; direction has a continuous effect instead of a hard jump, and northern-arc swell still counts for less, just gradually rather than via a step change.</li>
+      <li>"Predominantly NW&rarr;N&rarr;NE for 5 days" is implemented as: at least 4 of the last 5 days had a dominant wind direction inside the 292.5&deg;&ndash;67.5&deg; arc. This 4-of-5 threshold is my assumption &mdash; change it in the code if you meant something stricter or looser.</li>
+      <li>For a given evaluation day, the "last 5 days" window ends on and includes that day itself (using forecast wind direction for future days).</li>
+      <li>The 7-day rain window ends on and includes the day before the evaluation day (i.e. it doesn't count rain forecast to fall later on the evaluation day itself).</li>
+      <li>Swell figures use Open-Meteo's <code>swell_wave_height_max</code> / <code>swell_wave_direction_dominant</code> (the swell component only, not wind-chop or combined wave height).</li>
+      <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
+      <li>Tide times/heights come from Open-Meteo's modeled sea level curve (<code>sea_level_height_msl</code>, hourly), not an official NZ tide table &mdash; highs/lows are found by scanning for turning points in that curve, so times are only accurate to the nearest hour, and heights are relative to mean sea level rather than a navigational chart datum. Cross-check LINZ or MetService if you need precise tide timing.</li>
+    </ul>
+  </details>
 </div>
 
 <script>
@@ -210,28 +215,68 @@ function fmtDate(iso) {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+function fmtWeekday(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "long" });
+}
+
+function dateOf(hourlyIso) {
+  return hourlyIso.split("T")[0];
+}
+
+function fmtTime(hourlyIso) {
+  // Parse the wall-clock hour/minute directly rather than going through Date
+  // (which would reinterpret an offset-less timestamp in the viewer's own timezone).
+  const [h, m] = hourlyIso.split("T")[1].split(":").map(Number);
+  const ampm = h >= 12 ? "pm" : "am";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")}${ampm}`;
+}
+
+function findTideExtremes(times, heights) {
+  const extremes = [];
+  for (let i = 1; i < heights.length - 1; i++) {
+    if (heights[i] > heights[i - 1] && heights[i] > heights[i + 1]) {
+      extremes.push({ time: times[i], height: heights[i], type: "high" });
+    } else if (heights[i] < heights[i - 1] && heights[i] < heights[i + 1]) {
+      extremes.push({ time: times[i], height: heights[i], type: "low" });
+    }
+  }
+  return extremes;
+}
+
+const FORECAST_DAYS = 4; // today + 3 days ahead
+
 async function loadConditions() {
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}` +
-    `&daily=swell_wave_height_max,swell_wave_direction_dominant&timezone=auto&forecast_days=3`;
+    `&daily=swell_wave_height_max,swell_wave_direction_dominant` +
+    `&hourly=sea_level_height_msl&timezone=auto&forecast_days=${FORECAST_DAYS}`;
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
-    `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto&past_days=7&forecast_days=3`;
+    `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto&past_days=7&forecast_days=${FORECAST_DAYS}`;
 
   const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
   if (!marineRes.ok || !weatherRes.ok) throw new Error("Open-Meteo request failed");
   const marine = await marineRes.json();
   const weather = await weatherRes.json();
 
-  const wTime = weather.daily.time;               // 10 days: 7 past + today + next 2
+  const wTime = weather.daily.time;               // 7 past + today + next (FORECAST_DAYS-1)
   const windDir = weather.daily.winddirection_10m_dominant;
   const rain = weather.daily.precipitation_sum;
-  const todayIdxInWeather = wTime.length - 3;      // index of "today" in the weather arrays
+  const todayIdxInWeather = wTime.length - FORECAST_DAYS; // index of "today" in the weather arrays
 
-  const mTime = marine.daily.time;                 // 3 days: today, tomorrow, day-after
+  const mTime = marine.daily.time;                 // today .. FORECAST_DAYS-1 days ahead
   const swellH = marine.daily.swell_wave_height_max;
   const swellDir = marine.daily.swell_wave_direction_dominant;
 
+  const tideExtremes = findTideExtremes(marine.hourly.time, marine.hourly.sea_level_height_msl);
+  const tidesByDate = {};
+  tideExtremes.forEach(e => {
+    const d = dateOf(e.time);
+    (tidesByDate[d] = tidesByDate[d] || []).push(e);
+  });
+
   const results = [];
-  for (let offset = 0; offset < 3; offset++) {
+  for (let offset = 0; offset < FORECAST_DAYS; offset++) {
     const weatherIdx = todayIdxInWeather + offset;
 
     // Wind: last 5 days ending on (and including) this evaluation day
@@ -269,7 +314,8 @@ async function loadConditions() {
       swellPass, sH, sDir, threshold,
       windPass, favourableCount, windWindow,
       rainPass, rainTotal,
-      allPass, overallScore
+      allPass, overallScore,
+      tides: tidesByDate[mTime[offset]] || [],
     });
   }
   return results;
@@ -279,7 +325,7 @@ function render(results) {
   const container = document.getElementById("days");
   container.innerHTML = "";
   results.forEach((r, i) => {
-    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : "Day after tomorrow";
+    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : fmtWeekday(r.date);
     const card = document.createElement("div");
     card.className = "card";
     const chips = r.windWindow.map(d => {
@@ -295,15 +341,17 @@ function render(results) {
         <span class="score-label" style="color:${scoreColor(r.overallScore)};">${r.overallScore} &middot; ${scoreLabel(r.overallScore)}</span>
       </div>
       <div class="rule"><span class="label">Swell</span>
-        <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)} (need &lt; ${r.threshold.toFixed(2)} m)</span>
+        <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)}</span>
       </div>
       <div class="rule"><span class="label">Wind (5d)</span>
         <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/5 days NW&ndash;N&ndash;NE</span>
       </div>
       <div class="wind-chips">${chips}</div>
       <div class="rule"><span class="label">Rain (7d trailing)</span>
-        <span class="${r.rainPass ? 'pass' : 'fail'}">${r.rainTotal.toFixed(1)} mm (need &lt; 30 mm)</span>
+        <span class="${r.rainPass ? 'pass' : 'fail'}">${r.rainTotal.toFixed(1)} mm</span>
       </div>
+      <div class="rule"><span class="label">Tides</span></div>
+      <div class="tide-list">${r.tides.map(t => `<span class="tide-chip ${t.type}">${t.type === 'high' ? 'High' : 'Low'} ${fmtTime(t.time)} (${t.height.toFixed(2)}m)</span>`).join('') || '<span class="tide-chip">No tide data</span>'}</div>
     `;
     container.appendChild(card);
   });
