@@ -1,21 +1,35 @@
 # Dive Conditions
 
-Checks dive conditions on the Gisborne, NZ coast against a personal rule (swell
-height/direction, 5-day wind trend, trailing 7-day rain) using free Open-Meteo
-data, for either of two locations: Gisborne/Wainui or Makorori (they're far
-enough apart to fall in different Open-Meteo grid cells).
+Checks dive/snorkel conditions against a rule using free Open-Meteo data, for
+five NZ locations:
+
+| Location | Rule | Basis |
+|---|---|---|
+| Gisborne / Wainui | Swell 1.2-2.0m (directional), wind, rain | Your own calibrated rule |
+| Makorori | Same as Gisborne | Borrowed (not enough local data to calibrate its own) |
+| Goat Island | Swell < 0.6m only | Derived from iNaturalist photo patterns |
+| Poor Knights | Swell < 1.6m, rain < 20mm/7d | Derived from iNaturalist photo patterns |
+| Wellington (Taputeranga) | Swell < 1.5m, wind | Derived from iNaturalist photo patterns |
+
+The three "derived" locations were calibrated by comparing swell/wind/rain on
+days with a confirmed Research-Grade fish photo at that (no-take) marine
+reserve against random days in the same period — see each location's "How
+this rule was derived" note in the app's Info panel for the numbers behind it.
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
-  directly or serve it via GitHub Pages. Shows a Dive/No-dive verdict plus a
-  0-100 suitability score for today and the next 3 days, the full breakdown
-  (including high/low tide times and heights), a scrollable chart of the
-  suitability score back to October 2021 (when swell data for this coast
-  starts) — 30 days at a time, hold an arrow to scroll faster, or use the
-  double-arrow to jump a month at a time — and an Info dropdown with the rule,
+  directly or serve it via GitHub Pages. Location tabs at the top (your choice
+  persists via localStorage); each shows a Dive/No-dive verdict plus a 0-100
+  suitability score for today and the next 3 days, the full breakdown for
+  whichever conditions apply at that site (including high/low tide times and
+  heights), a scrollable chart of the suitability score back to October 2021
+  (when swell data starts) — 30 days at a time on desktop, 7 on mobile, hold an
+  arrow to scroll faster or use the double-arrow to jump a month at a time —
+  and an Info dropdown with that site's specific rule, how it was derived,
   scoring method, and assumptions.
-- **`dive_check.py`** — same rule in Python; sends a heads-up (email and/or a
-  phone push notification via [ntfy.sh](https://ntfy.sh)) only on days that
-  pass. Run it on a schedule since a static page can't notify you itself.
+- **`dive_check.py`** — same rule in Python, for Gisborne only; sends a heads-up
+  (email and/or a phone push notification via [ntfy.sh](https://ntfy.sh)) only
+  on days that pass. Run it on a schedule since a static page can't notify you
+  itself.
 - **`.github/workflows/dive-check.yml`** — runs `dive_check.py` daily via GitHub
   Actions, for free.
 

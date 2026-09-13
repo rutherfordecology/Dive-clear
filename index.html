@@ -123,7 +123,7 @@
   .info-section-title { margin: 14px 0 4px; font-weight: 600; color: var(--text); }
   .info-section-title:first-child { margin-top: 0; }
   .version { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
-  .loc-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .loc-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .loc-tab {
     border: 1px solid var(--card-border);
     background: var(--card);
@@ -164,32 +164,28 @@
   <details>
     <summary>Info</summary>
 
-    <p class="info-section-title">Rule</p>
-    <ul>
-      <li>Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.</li>
-      <li>Wind predominantly NW&rarr;N&rarr;NE for the last 5 days.</li>
-      <li>Less than 30 mm of rain in the trailing 7 days.</li>
-      <li>All three must pass for a day to be called "Dive".</li>
-    </ul>
+    <p class="info-section-title">Rule for <span id="infoLocName"></span></p>
+    <ul id="ruleList"></ul>
+
+    <p class="info-section-title">How this rule was derived</p>
+    <ul id="locNotesList"></ul>
 
     <p class="info-section-title">Suitability score</p>
     <ul>
       <li>Alongside the pass/fail verdict, each day gets a 0&ndash;100 suitability score so you can compare "bad" days to each other, or see how close a "Dive" day was to failing.</li>
-      <li>Each of the three conditions gets its own 0&ndash;100 score based on how much margin it has under its threshold (0 = at or past the limit, 100 = ideal/zero). The overall score is a plain average of the three &mdash; equal weighting, not based on any research into which factor matters most for this coast.</li>
-      <li>The score is informational only &mdash; it doesn't change the Dive/No dive verdict, which still requires all three conditions to individually pass.</li>
+      <li>Each condition used at this site gets its own 0&ndash;100 score based on how much margin it has under its threshold (0 = at or past the limit, 100 = ideal/zero). The overall score is a plain average of whichever conditions apply here (one, two, or three, depending on the site) &mdash; equal weighting, not a weighted model of which factor matters most.</li>
+      <li>The score is informational only &mdash; it doesn't change the Dive/No dive verdict, which still requires every condition used at this site to individually pass.</li>
     </ul>
 
     <p class="info-section-title">Assumptions (things I decided, not things you specified)</p>
     <ul>
-      <li>The original rule gave two fixed swell thresholds (1.2 m for S/SW/SE, 2.0 m for N/NE/NW) with no rule for the boundary directions. That's now a smooth linear interpolation by angular distance from north (1.2 m at due south, 2.0 m at due north, ~1.6 m at due east/west) &mdash; direction has a continuous effect instead of a hard jump, and northern-arc swell still counts for less, just gradually rather than via a step change.</li>
-      <li>"Predominantly NW&rarr;N&rarr;NE for 5 days" is implemented as: at least 4 of the last 5 days had a dominant wind direction inside the 292.5&deg;&ndash;67.5&deg; arc. This 4-of-5 threshold is my assumption &mdash; change it in the code if you meant something stricter or looser.</li>
-      <li>For a given evaluation day, the "last 5 days" window ends on and includes that day itself (using forecast wind direction for future days).</li>
+      <li>For a given evaluation day, the "last N days" wind window ends on and includes that day itself (using forecast wind direction for future days).</li>
       <li>The 7-day rain window ends on and includes the day before the evaluation day (i.e. it doesn't count rain forecast to fall later on the evaluation day itself).</li>
       <li>Swell figures use Open-Meteo's <code>swell_wave_height_max</code> / <code>swell_wave_direction_dominant</code> (the swell component only, not wind-chop or combined wave height).</li>
       <li>The Morning/Midday/Afternoon swell breakdown uses fixed clock-hour bands (6-10am, 11am-1pm, 2-5pm) &mdash; not tied to tide, daylight, or when you'd actually plan to dive. Each period's figure is the average hourly swell height and a circular-mean direction across its hours, not a max.</li>
       <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
       <li>Tide times/heights come from Open-Meteo's modeled sea level curve (<code>sea_level_height_msl</code>, hourly), not an official NZ tide table &mdash; highs/lows are found by scanning for turning points in that curve, so times are only accurate to the nearest hour, and heights are relative to mean sea level rather than a navigational chart datum. Cross-check LINZ or MetService if you need precise tide timing.</li>
-      <li>"Gisborne / Wainui" is one combined location, not two &mdash; at Open-Meteo's model resolution here (~9km for swell, ~11km for wind/rain), Wainui's coordinates land in the exact same grid cell as Gisborne town, so a separate Wainui tab would just duplicate these numbers. Makorori is far enough along the coast to fall in a genuinely different cell.</li>
+      <li>The Goat Island, Poor Knights, and Wellington rules were derived automatically from iNaturalist photo patterns (see "How this rule was derived" above for each), not from personal diving experience the way the Gisborne rule was &mdash; treat them as a reasonable starting point, not a verified personal rule.</li>
     </ul>
   </details>
 
@@ -197,12 +193,93 @@
 </div>
 
 <script>
-const APP_VERSION = "1.12";
+const APP_VERSION = "1.13";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
+// Each location's rule is either the user's own calibrated rule (Gisborne,
+// borrowed as-is by Makorori) or one derived automatically by comparing
+// swell/wind/rain on days with a confirmed Research-Grade fish photo (a
+// no-take reserve, so photos = divers, not anglers) against random days in
+// the same period. See each location's "notes" and the Info panel.
 const LOCATIONS = {
-  gisborne: { name: "Gisborne / Wainui", lat: -38.6623, lon: 178.0176 },
-  makorori: { name: "Makorori", lat: -38.65, lon: 178.13 },
+  gisborne: {
+    name: "Gisborne / Wainui", lat: -38.6623, lon: 178.0176,
+    rule: {
+      swell: { type: "directional", southM: 1.2, northM: 2.0 },
+      wind: { enabled: true, requiredDays: 4, windowDays: 5 },
+      rain: { enabled: true, maxMm: 30, windowDays: 7 },
+    },
+    ruleText: [
+      "Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.",
+      "Wind predominantly NW&rarr;N&rarr;NE for at least 4 of the last 5 days.",
+      "Less than 30 mm of rain in the trailing 7 days.",
+    ],
+    notes: [
+      "This is your own rule, calibrated from your own diving experience &mdash; not derived from the photo-pattern analysis used for the newer locations below.",
+      "The swell threshold interpolates smoothly from 1.2 m (due south, full impact) to 2.0 m (due north, dampened impact) based on direction, replacing an earlier hard S/SW/SE-vs-N/NE/NW split that had no defined behaviour right at the boundaries.",
+      "I tried reassessing this rule against your iNaturalist dive photos (excluding angler-caught species: Kahawai, Snapper, Kingfish, Trevally, Conger, Blue Cod) but only found 14 usable dive-days with full swell+wind+rain data &mdash; too few to responsibly change anything. The trend was consistent with your rule (calmer swell, more favourable wind, less rain on days you actually dived), just not a big enough sample to act on.",
+      "Gisborne and Wainui are treated as one combined location, not two &mdash; at Open-Meteo's resolution here (~9km for swell, ~11km for wind/rain), Wainui's coordinates land in the exact same grid cell as Gisborne town.",
+    ],
+  },
+  makorori: {
+    name: "Makorori", lat: -38.65, lon: 178.13,
+    rule: {
+      swell: { type: "directional", southM: 1.2, northM: 2.0 },
+      wind: { enabled: true, requiredDays: 4, windowDays: 5 },
+      rain: { enabled: true, maxMm: 30, windowDays: 7 },
+    },
+    ruleText: [
+      "Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.",
+      "Wind predominantly NW&rarr;N&rarr;NE for at least 4 of the last 5 days.",
+      "Less than 30 mm of rain in the trailing 7 days.",
+    ],
+    notes: [
+      "Uses the same rule as Gisborne/Wainui &mdash; it's your rule, not something re-derived for this specific spot &mdash; evaluated at Makorori's own coordinates, which fall in a genuinely different, more exposed Open-Meteo grid cell (confirmed: Makorori reads noticeably higher swell than Gisborne town on the same day).",
+      "Not enough personal dive-log data at Makorori specifically to calibrate its own rule, so it borrows Gisborne's thresholds as a starting point.",
+    ],
+  },
+  goatisland: {
+    name: "Goat Island", lat: -36.2661, lon: 174.7860,
+    rule: {
+      swell: { type: "flat", maxM: 0.6 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 0.6 m."],
+    notes: [
+      "Derived automatically: compared swell/wind/rain on 156 days with a confirmed Research-Grade fish photo at Goat Island (a no-take marine reserve, so every photo is from a snorkeler/diver) against 156 random days in the same period.",
+      "Swell showed a clear difference (0.41 m average on confirmed dive days vs 0.61 m on random days), and 90% of confirmed dive days had swell under 0.66 m &mdash; 0.6 m was used as a round cutoff near that.",
+      "Wind and rain showed only weak differences at this sheltered, non-river-mouth site and aren't included in the rule.",
+    ],
+  },
+  poorknights: {
+    name: "Poor Knights", lat: -35.5667, lon: 174.7060,
+    rule: {
+      swell: { type: "flat", maxM: 1.6 },
+      wind: { enabled: false },
+      rain: { enabled: true, maxMm: 20, windowDays: 7 },
+    },
+    ruleText: ["Swell under about 1.6 m.", "Less than 20 mm of rain in the trailing 7 days."],
+    notes: [
+      "Derived the same way as Goat Island: 135 confirmed dive days vs 135 random days at this no-take reserve.",
+      "Both swell (1.07 m vs 1.35 m average) and rain (5.2 mm vs 14.4 mm median, trailing 7 days) showed a real difference; wind didn't.",
+      "This is a boat-access-only site, so \"confirmed dive day\" really reflects the charter operator's own go/no-go call rather than individual diver choice &mdash; the numbers describe when boats actually run, which may be more conservative than your own personal comfort threshold.",
+    ],
+  },
+  wellington: {
+    name: "Wellington (Taputeranga)", lat: -41.3592, lon: 174.7670,
+    rule: {
+      swell: { type: "flat", maxM: 1.5 },
+      wind: { enabled: true, requiredDays: 3, windowDays: 5 },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 1.5 m.", "Wind predominantly NW&rarr;N&rarr;NE for at least 3 of the last 5 days."],
+    notes: [
+      "Derived from 325 confirmed dive days vs 325 random days at Taputeranga Marine Reserve (Island Bay) &mdash; the best-covered site in this whole comparison.",
+      "Swell showed a large difference (0.94 m vs 1.42 m average). Wind also mattered (favourable NW-N-NE days were more common on dive days) &mdash; likely a Cook Strait exposure effect rather than the river-plume logic behind Gisborne's wind rule, but the same directional arc happened to show up as relevant here too.",
+      "Rain showed no meaningful difference at this site and isn't included.",
+    ],
+  },
 };
 
 function loadSavedLocation() {
@@ -225,16 +302,51 @@ function isFavourableWindDir(deg) {
   return d >= 292.5 || d < 67.5; // NW -> N -> NE arc
 }
 
-function swellThreshold(deg) {
+function swellThresholdFor(rule, deg) {
+  if (rule.swell.type === "flat") return rule.swell.maxM;
+  // Directional type (Gisborne/Makorori): smooth interpolation instead of a hard
+  // S/SW/SE-vs-N/NE/NW split - the threshold rises from southM (swell from due
+  // south, full impact) to northM (swell from due north, dampened impact), based
+  // on angular distance from north. Removes the discontinuity at old arc
+  // boundaries and the ad-hoc "due-west" special case - west falls naturally
+  // partway between.
   const d = ((deg % 360) + 360) % 360;
-  // Smooth interpolation instead of a hard S/SW/SE-vs-N/NE/NW split: the threshold
-  // rises from 1.2m (swell from due south, full impact on this coast) to 2.0m
-  // (swell from due north, dampened impact), based on angular distance from north.
-  // This removes the discontinuity at the old arc boundaries and the ad-hoc
-  // "due-west" special case - west now just falls naturally partway between.
   const distFromNorth = Math.min(d, 360 - d); // 0 at north, 180 at south
   const leniencyFrac = 1 - distFromNorth / 180; // 1 at north, 0 at south
-  return 1.2 + (2.0 - 1.2) * leniencyFrac;
+  return rule.swell.southM + (rule.swell.northM - rule.swell.southM) * leniencyFrac;
+}
+
+// Evaluates one day against a location's rule. windWindow/rainTotal are always
+// passed in (harmless if the rule doesn't use them) so callers don't need to
+// know which conditions are active before computing them.
+function evaluateDay(rule, { sH, sDir, windWindow, rainTotal }) {
+  const threshold = swellThresholdFor(rule, sDir);
+  const swellPass = sH != null && sH < threshold;
+  const swellScore = sH != null ? clamp01(1 - sH / threshold) * 100 : 0;
+
+  const scores = [swellScore];
+  let allPass = swellPass;
+
+  let windPass = null, windScore = null, favourableCount = null;
+  if (rule.wind.enabled) {
+    favourableCount = windWindow.filter(isFavourableWindDir).length;
+    windPass = favourableCount >= rule.wind.requiredDays;
+    windScore = (favourableCount / rule.wind.windowDays) * 100;
+    scores.push(windScore);
+    allPass = allPass && windPass;
+  }
+
+  let rainPass = null, rainScore = null;
+  if (rule.rain.enabled) {
+    rainPass = rainTotal < rule.rain.maxMm;
+    rainScore = clamp01(1 - rainTotal / rule.rain.maxMm) * 100;
+    scores.push(rainScore);
+    allPass = allPass && rainPass;
+  }
+
+  const overallScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+
+  return { threshold, swellPass, swellScore, windPass, windScore, favourableCount, rainPass, rainScore, allPass, overallScore };
 }
 
 function clamp01(x) {
@@ -295,7 +407,7 @@ const DAY_PERIODS = [
   { key: "afternoon", label: "Afternoon", hours: [14, 15, 16, 17] },
 ];
 
-function computePeriodSwell(hourlyTimes, heights, dirs, dateStr) {
+function computePeriodSwell(rule, hourlyTimes, heights, dirs, dateStr) {
   return DAY_PERIODS.map(period => {
     const idxs = [];
     hourlyTimes.forEach((t, i) => {
@@ -308,7 +420,7 @@ function computePeriodSwell(hourlyTimes, heights, dirs, dateStr) {
     if (!hVals.length) return { ...period, height: null, dir: null, score: 0, pass: false, threshold: null };
     const avgHeight = hVals.reduce((a, b) => a + b, 0) / hVals.length;
     const dir = circularMeanDeg(dVals);
-    const threshold = swellThreshold(dir);
+    const threshold = swellThresholdFor(rule, dir);
     const pass = avgHeight < threshold;
     const score = clamp01(1 - avgHeight / threshold) * 100;
     return { ...period, height: avgHeight, dir, threshold, pass, score };
@@ -330,7 +442,7 @@ function findTideExtremes(times, heights) {
 const FORECAST_DAYS = 4; // today + 3 days ahead
 
 async function loadConditions() {
-  const { lat, lon } = LOCATIONS[currentLocKey];
+  const { lat, lon, rule } = LOCATIONS[currentLocKey];
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
     `&daily=swell_wave_height_max,swell_wave_direction_dominant` +
     `&hourly=sea_level_height_msl,swell_wave_height,swell_wave_direction` +
@@ -363,46 +475,32 @@ async function loadConditions() {
   for (let offset = 0; offset < FORECAST_DAYS; offset++) {
     const weatherIdx = todayIdxInWeather + offset;
 
-    // Wind: last 5 days ending on (and including) this evaluation day
+    // Wind: last N days (per this site's rule) ending on (and including) this day
+    const windDays = rule.wind.windowDays || 5;
     const windWindow = [];
-    for (let k = weatherIdx - 4; k <= weatherIdx; k++) {
+    for (let k = weatherIdx - (windDays - 1); k <= weatherIdx; k++) {
       if (k >= 0 && k < windDir.length) windWindow.push(windDir[k]);
     }
-    const favourableCount = windWindow.filter(isFavourableWindDir).length;
-    const windPass = favourableCount >= 4;
 
     // Rain: 7 days ending on (and including) the day BEFORE this evaluation day
     let rainTotal = 0;
     for (let k = weatherIdx - 7; k <= weatherIdx - 1; k++) {
       if (k >= 0 && k < rain.length && rain[k] != null) rainTotal += rain[k];
     }
-    const rainPass = rainTotal < 30;
 
-    // Swell
     const sH = swellH[offset];
     const sDir = swellDir[offset];
-    const threshold = swellThreshold(sDir);
-    const swellPass = sH != null && sH < threshold;
 
-    const allPass = windPass && rainPass && swellPass;
-
-    // Suitability score: 0-100 per condition based on margin under threshold,
-    // averaged with equal weighting (see "Suitability score" assumptions panel).
-    const swellScore = sH != null ? clamp01(1 - sH / threshold) * 100 : 0;
-    const windScore = (favourableCount / 5) * 100;
-    const rainScore = clamp01(1 - rainTotal / 30) * 100;
-    const overallScore = Math.round((swellScore + windScore + rainScore) / 3);
+    const evalResult = evaluateDay(rule, { sH, sDir, windWindow, rainTotal });
 
     const periods = computePeriodSwell(
-      marine.hourly.time, marine.hourly.swell_wave_height, marine.hourly.swell_wave_direction, mTime[offset]
+      rule, marine.hourly.time, marine.hourly.swell_wave_height, marine.hourly.swell_wave_direction, mTime[offset]
     );
 
     results.push({
       date: mTime[offset],
-      swellPass, sH, sDir, threshold,
-      windPass, favourableCount, windWindow,
-      rainPass, rainTotal,
-      allPass, overallScore,
+      sH, sDir, windWindow, rainTotal,
+      ...evalResult,
       tides: tidesByDate[mTime[offset]] || [],
       periods,
     });
@@ -411,16 +509,30 @@ async function loadConditions() {
 }
 
 function render(results) {
+  const rule = LOCATIONS[currentLocKey].rule;
   const container = document.getElementById("days");
   container.innerHTML = "";
   results.forEach((r, i) => {
     const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : fmtWeekday(r.date);
     const card = document.createElement("div");
     card.className = "card";
-    const chips = r.windWindow.map(d => {
-      const ok = isFavourableWindDir(d);
-      return `<span class="chip ${ok ? 'ok' : 'no'}">${compass(d)}</span>`;
-    }).join("");
+
+    const windBlock = rule.wind.enabled ? `
+      <div class="rule"><span class="label">Wind (${rule.wind.windowDays}d)</span>
+        <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/${rule.wind.windowDays} days NW&ndash;N&ndash;NE</span>
+      </div>
+      <div class="wind-chips">${r.windWindow.map(d => {
+        const ok = isFavourableWindDir(d);
+        return `<span class="chip ${ok ? 'ok' : 'no'}">${compass(d)}</span>`;
+      }).join('')}</div>
+    ` : '';
+
+    const rainBlock = rule.rain.enabled ? `
+      <div class="rule"><span class="label">Rain (${rule.rain.windowDays}d trailing)</span>
+        <span class="${r.rainPass ? 'pass' : 'fail'}">${r.rainTotal.toFixed(1)} mm</span>
+      </div>
+    ` : '';
+
     card.innerHTML = `
       <div class="card-header">
         <h2>${label}</h2>
@@ -440,13 +552,8 @@ function render(results) {
           <span class="period-swell" style="color:${p.height != null ? scoreColor(p.score) : 'var(--muted)'};">${p.height != null ? p.height.toFixed(1) + 'm' : '?'}</span>
         </div>
       `).join('')}</div>
-      <div class="rule"><span class="label">Wind (5d)</span>
-        <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/5 days NW&ndash;N&ndash;NE</span>
-      </div>
-      <div class="wind-chips">${chips}</div>
-      <div class="rule"><span class="label">Rain (7d trailing)</span>
-        <span class="${r.rainPass ? 'pass' : 'fail'}">${r.rainTotal.toFixed(1)} mm</span>
-      </div>
+      ${windBlock}
+      ${rainBlock}
       <div class="rule"><span class="label">Tides</span></div>
       <div class="tide-list">${r.tides.map(t => `<span class="tide-chip ${t.type}">${t.type === 'high' ? 'High' : 'Low'} ${fmtTime(t.time)} (${t.height.toFixed(2)}m)</span>`).join('') || '<span class="tide-chip">No tide data</span>'}</div>
     `;
@@ -487,7 +594,7 @@ function fmtDateLong(iso) {
 }
 
 async function loadHistory() {
-  const { lat, lon } = LOCATIONS[currentLocKey];
+  const { lat, lon, rule } = LOCATIONS[currentLocKey];
   const today = new Date();
   const startStr = HIST_START_DATE;
   const endStr = isoDate(today);
@@ -510,33 +617,26 @@ async function loadHistory() {
   const swellH = marine.daily.swell_wave_height_max;
   const swellDir = marine.daily.swell_wave_direction_dominant;
 
+  const windDays = rule.wind.windowDays || 5;
   const history = [];
   for (let i = 7; i < time.length; i++) {
-    const windWindow = windDir.slice(Math.max(0, i - 4), i + 1);
-    if (windWindow.some(d => d == null)) continue;
-    const favourableCount = windWindow.filter(isFavourableWindDir).length;
-    const windPass = favourableCount >= 4;
-
-    const rainWindow = rain.slice(Math.max(0, i - 7), i);
-    if (rainWindow.some(v => v == null)) continue;
-    const rainTotal = rainWindow.reduce((a, b) => a + b, 0);
-    const rainPass = rainTotal < 30;
-
     const sH = swellH[i];
     const sDir = swellDir[i];
     if (sH == null || sDir == null) continue;
-    const threshold = swellThreshold(sDir);
-    const swellPass = sH < threshold;
 
-    const swellScore = clamp01(1 - sH / threshold) * 100;
-    const windScore = (favourableCount / 5) * 100;
-    const rainScore = clamp01(1 - rainTotal / 30) * 100;
-    const overallScore = Math.round((swellScore + windScore + rainScore) / 3);
+    const windWindow = windDir.slice(Math.max(0, i - (windDays - 1)), i + 1);
+    if (rule.wind.enabled && windWindow.some(d => d == null)) continue;
+
+    const rainWindow = rain.slice(Math.max(0, i - 7), i);
+    if (rule.rain.enabled && rainWindow.some(v => v == null)) continue;
+    const rainTotal = rainWindow.reduce((a, b) => a + (b || 0), 0);
+
+    const evalResult = evaluateDay(rule, { sH, sDir, windWindow, rainTotal });
 
     history.push({
       date: time[i],
-      allPass: swellPass && windPass && rainPass,
-      overallScore,
+      allPass: evalResult.allPass,
+      overallScore: evalResult.overallScore,
     });
   }
   return history;
@@ -659,10 +759,29 @@ function selectLocation(key) {
   refreshAll();
 }
 
+function ruleSummaryLine(rule) {
+  const parts = ["swell"];
+  if (rule.wind.enabled) parts.push("wind");
+  if (rule.rain.enabled) parts.push("rain");
+  if (parts.length === 1) {
+    return "Only swell is used for this site &mdash; no reliable wind or rain signal was found in the data.";
+  }
+  return `All ${parts.length} conditions (${parts.join(", ")}) must pass for a day to be called "Dive".`;
+}
+
+function renderInfoPanel() {
+  const loc = LOCATIONS[currentLocKey];
+  document.getElementById("infoLocName").textContent = loc.name;
+  document.getElementById("ruleList").innerHTML =
+    loc.ruleText.map(t => `<li>${t}</li>`).join("") + `<li>${ruleSummaryLine(loc.rule)}</li>`;
+  document.getElementById("locNotesList").innerHTML = loc.notes.map(t => `<li>${t}</li>`).join("");
+}
+
 function refreshAll() {
   const loc = LOCATIONS[currentLocKey];
   document.getElementById("subLine").textContent =
     `${loc.name} (${loc.lat}, ${loc.lon}) · data: Open-Meteo (marine + weather forecast)`;
+  renderInfoPanel();
 
   document.getElementById("status").style.display = "block";
   document.getElementById("status").textContent = "Loading live conditions…";

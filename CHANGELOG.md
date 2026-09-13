@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.13
+- Add three new locations: Goat Island, Poor Knights, and Wellington (Taputeranga) - each with its own rule derived by comparing swell/wind/rain on days with a confirmed Research-Grade fish photo (at a no-take reserve, so photos = divers not anglers) against random days in the same period.
+- Rules are now fully per-location: each site enables only the conditions that showed a real signal (Goat Island is swell-only; Poor Knights is swell+rain; Wellington is swell+wind), and the day cards, scoring, and Info panel all adapt to show only what's relevant.
+- Reassessed the Gisborne rule the same way; kept it unchanged since only 14 usable dive-days were found (too few to responsibly recalibrate), though the trend was consistent with the existing rule.
+- Info panel now shows a "Rule for [location]" and "How this rule was derived" section specific to whichever location is selected.
+
 ## v1.12
 - History chart shows 7 days at a time on mobile-width screens (was 30, cramped and unreadable) instead of the desktop's 30. Labels show a bare day number when every column is labeled, to avoid overlap.
 
