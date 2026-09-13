@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.16
+- Add two new locations found via the national grid scan and re-checked with the reliable one-observer-3+-species method: **Kapiti** (swell only, under ~0.8m - the strongest single-factor result seen in this whole project) and **Torbay** (swell only, under ~0.25m - a sheltered inner-Hauraki-Gulf spot similar to Goat Island, smaller sample so treated as more tentative).
+- Checked but skipped Dunedin: too few qualifying multi-species days (19) to trust a derived rule.
+- History timeline now extends into the forecast days already shown on the day cards, drawn with a hashed, translucent fill so forecast bars are visually distinct from confirmed history.
+- Info panel trimmed down to just the rule list for the selected location - dropped the "how this rule was derived" and assumptions narrative.
+
 ## v1.15
 - Add a national site-discovery scan: binned all ~22,000 NZ Research-Grade fish photos since Oct 2021 into an ~11km grid and ranked cells by the same "3+ species by one observer in one day" quality signal used for rule derivation, to find genuine hotspots rather than guessing town names.
 - Added two new locations found this way: **Porirua** (swell + wind, ranked higher than Poor Knights had) and **Bay of Islands** (rain only, smaller sample - noted as more tentative).

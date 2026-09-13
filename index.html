@@ -166,34 +166,13 @@
 
     <p class="info-section-title">Rule for <span id="infoLocName"></span></p>
     <ul id="ruleList"></ul>
-
-    <p class="info-section-title">How this rule was derived</p>
-    <ul id="locNotesList"></ul>
-
-    <p class="info-section-title">Suitability score</p>
-    <ul>
-      <li>Alongside the pass/fail verdict, each day gets a 0&ndash;100 suitability score so you can compare "bad" days to each other, or see how close a "Dive" day was to failing.</li>
-      <li>Each condition used at this site gets its own 0&ndash;100 score based on how much margin it has under its threshold (0 = at or past the limit, 100 = ideal/zero). The overall score is a plain average of whichever conditions apply here (one, two, or three, depending on the site) &mdash; equal weighting, not a weighted model of which factor matters most.</li>
-      <li>The score is informational only &mdash; it doesn't change the Dive/No dive verdict, which still requires every condition used at this site to individually pass.</li>
-    </ul>
-
-    <p class="info-section-title">Assumptions (things I decided, not things you specified)</p>
-    <ul>
-      <li>For a given evaluation day, the "last N days" wind window ends on and includes that day itself (using forecast wind direction for future days).</li>
-      <li>The 7-day rain window ends on and includes the day before the evaluation day (i.e. it doesn't count rain forecast to fall later on the evaluation day itself).</li>
-      <li>Swell figures use Open-Meteo's <code>swell_wave_height_max</code> / <code>swell_wave_direction_dominant</code> (the swell component only, not wind-chop or combined wave height).</li>
-      <li>The Morning/Midday/Afternoon swell breakdown uses fixed clock-hour bands (6-10am, 11am-1pm, 2-5pm) &mdash; not tied to tide, daylight, or when you'd actually plan to dive. Each period's figure is the average hourly swell height and a circular-mean direction across its hours, not a max.</li>
-      <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
-      <li>Tide times/heights come from Open-Meteo's modeled sea level curve (<code>sea_level_height_msl</code>, hourly), not an official NZ tide table &mdash; highs/lows are found by scanning for turning points in that curve, so times are only accurate to the nearest hour, and heights are relative to mean sea level rather than a navigational chart datum. Cross-check LINZ or MetService if you need precise tide timing.</li>
-      <li>The Goat Island, Poor Knights, and Wellington rules were derived automatically from iNaturalist photo patterns (see "How this rule was derived" above for each), not from personal diving experience the way the Gisborne rule was &mdash; treat them as a reasonable starting point, not a verified personal rule.</li>
-    </ul>
   </details>
 
   <div class="version" id="version"></div>
 </div>
 
 <script>
-const APP_VERSION = "1.15";
+const APP_VERSION = "1.16";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 // Each location's rule is either the user's own calibrated rule (Gisborne,
@@ -316,7 +295,33 @@ const LOCATIONS = {
     notes: [
       "Also found via the national grid scan (see Porirua) &mdash; the second-highest-ranked uncovered cell in the country, but with a notably smaller sample: only 28 days had one observer photograph 3+ species, versus 45-125 at the other derived sites. Treat this rule as more tentative than the others.",
       "Rain was the only condition with a real difference (18.9 mm vs 37.5 mm average, trailing 7 days, Cohen's d -0.65) &mdash; a sizeable effect even at this smaller sample. Swell and wind showed only weak differences (d around -0.3) and aren't confident enough to include, so this site's verdict currently rests on rain alone.",
-      "The swell rule is set to effectively \"always pass\" (999 m) since no reliable threshold could be derived &mdash; the suitability score and Dive verdict here are really just a rain check for now, not a full three-factor rule.",
+      "Swell is disabled (not just given a lenient threshold) since no reliable one could be derived &mdash; the suitability score and Dive verdict here are really just a rain check for now, not a full three-factor rule.",
+    ],
+  },
+  kapiti: {
+    name: "Kapiti", lat: -40.88, lon: 174.92,
+    rule: {
+      swell: { type: "flat", maxM: 0.8 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 0.8 m."],
+    notes: [
+      "Found via the national grid scan (see Porirua/Bay of Islands), re-derived with the reliable one-observer-3+-species method: 34 confirmed dive days vs 34 random days.",
+      "Swell showed the strongest single-factor result of any site checked in this whole project (0.57 m vs 1.07 m average, Cohen's d -1.25 - the two distributions barely overlap). Wind showed only a weak effect and rain none, so neither is included.",
+    ],
+  },
+  torbay: {
+    name: "Torbay", lat: -36.70, lon: 174.76,
+    rule: {
+      swell: { type: "flat", maxM: 0.25 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 0.25 m."],
+    notes: [
+      "Also found via the national grid scan, re-derived the same way as Kapiti: 25 confirmed dive days vs 25 random days.",
+      "Swell showed a moderate difference (0.16 m vs 0.21 m average, Cohen's d -0.44) - both numbers are tiny since this is a sheltered inner-Hauraki-Gulf spot, similar in character to Goat Island. Wind and rain showed only weak differences and aren't included. Smaller sample than most other derived sites, so treat this one as more tentative.",
     ],
   },
 };
@@ -715,12 +720,20 @@ function renderHistoryChart() {
   const slice = historyData.slice(start, windowEnd + 1);
 
   const chartEl = document.getElementById("historyChart");
-  chartEl.innerHTML = slice.map(d => `
-    <div class="hist-bar-col" title="${fmtDateLong(d.date)}: ${d.overallScore}/100${d.allPass ? ' (DIVE)' : ''}">
-      ${d.allPass ? `<div class="hist-dive-dot" style="bottom:${d.overallScore}%;"></div>` : ""}
-      <div class="hist-bar" style="height:${d.overallScore}%; background:${scoreColor(d.overallScore)};"></div>
-    </div>
-  `).join("");
+  chartEl.innerHTML = slice.map(d => {
+    const color = scoreColor(d.overallScore);
+    // Forecast days (not yet confirmed history) get a hashed, translucent fill
+    // instead of a solid one, so they read as predicted rather than recorded.
+    const barStyle = d.isForecast
+      ? `height:${d.overallScore}%; color:${color}; opacity:0.6; background:repeating-linear-gradient(45deg, currentColor 0 3px, transparent 3px 7px);`
+      : `height:${d.overallScore}%; background:${color};`;
+    return `
+      <div class="hist-bar-col" title="${fmtDateLong(d.date)}: ${d.overallScore}/100${d.allPass ? ' (DIVE)' : ''}${d.isForecast ? ' – forecast' : ''}">
+        ${d.allPass ? `<div class="hist-dive-dot" style="bottom:${d.overallScore}%;"></div>` : ""}
+        <div class="hist-bar" style="${barStyle}"></div>
+      </div>
+    `;
+  }).join("");
 
   const labelsEl = document.getElementById("historyLabels");
   const labelStep = windowSize <= 10 ? 1 : 5;
@@ -828,9 +841,9 @@ function ruleSummaryLine(rule) {
   if (rule.wind.enabled) parts.push("wind");
   if (rule.rain.enabled) parts.push("rain");
   if (parts.length === 1) {
-    return `Only ${parts[0]} is used for this site &mdash; no reliable signal was found for the other conditions in the data.`;
+    return `Only ${parts[0]} used at this site.`;
   }
-  return `All ${parts.length} conditions (${parts.join(", ")}) must pass for a day to be called "Dive".`;
+  return `All ${parts.length} (${parts.join(", ")}) must pass for "Dive".`;
 }
 
 function renderInfoPanel() {
@@ -838,7 +851,6 @@ function renderInfoPanel() {
   document.getElementById("infoLocName").textContent = loc.name;
   document.getElementById("ruleList").innerHTML =
     loc.ruleText.map(t => `<li>${t}</li>`).join("") + `<li>${ruleSummaryLine(loc.rule)}</li>`;
-  document.getElementById("locNotesList").innerHTML = loc.notes.map(t => `<li>${t}</li>`).join("");
 }
 
 function refreshAll() {
@@ -850,7 +862,8 @@ function refreshAll() {
   document.getElementById("status").style.display = "block";
   document.getElementById("status").textContent = "Loading live conditions…";
   document.getElementById("days").style.display = "none";
-  loadConditions()
+  const conditionsPromise = loadConditions();
+  conditionsPromise
     .then(render)
     .catch(err => {
       document.getElementById("status").textContent = "Couldn't load conditions: " + err.message;
@@ -858,9 +871,25 @@ function refreshAll() {
 
   document.getElementById("historyRange").textContent = "Loading history…";
   loadHistory()
-    .then(history => {
+    .then(async history => {
       historyData = history;
-      dateToIndex = new Map(history.map((d, i) => [d.date, i]));
+      // Extend the timeline with the same forecast days already shown on the
+      // day cards (tomorrow onward - today is already covered by history),
+      // reusing conditionsPromise rather than fetching again. Rendered
+      // separately (hashed) since these are predictions, not confirmed data.
+      try {
+        const conditions = await conditionsPromise;
+        // Check every forecast day by date rather than assuming index 0 ("today")
+        // always duplicates history's last entry - the archive API can lag a day
+        // behind for the current day, which would otherwise leave a gap.
+        const knownDates = new Set(historyData.map(d => d.date));
+        conditions.forEach(r => {
+          if (!knownDates.has(r.date)) {
+            historyData.push({ date: r.date, allPass: r.allPass, overallScore: r.overallScore, isForecast: true });
+          }
+        });
+      } catch (e) { /* forecast unavailable - history still stands on its own */ }
+      dateToIndex = new Map(historyData.map((d, i) => [d.date, i]));
       windowEnd = historyData.length - 1;
       renderHistoryChart();
     })

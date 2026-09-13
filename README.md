@@ -1,7 +1,7 @@
 # Dive Conditions
 
 Checks dive/snorkel conditions against a rule using free Open-Meteo data, for
-seven NZ locations:
+nine NZ locations:
 
 | Location | Rule | Basis |
 |---|---|---|
@@ -12,8 +12,10 @@ seven NZ locations:
 | Wellington (Taputeranga) | Swell < 1.4m, wind (NW-N-NE), rain < 25mm/7d | Derived from iNaturalist photo patterns |
 | Porirua | Swell < 0.9m, wind (SE-centred) | Derived from iNaturalist photo patterns |
 | Bay of Islands | Rain < 25mm/7d only | Derived, smaller sample - more tentative |
+| Kapiti | Swell < 0.8m only | Derived, strongest single-factor result found |
+| Torbay | Swell < 0.25m only | Derived, smaller sample - more tentative |
 
-The five "derived" locations were calibrated by finding days where one
+The seven "derived" locations were calibrated by finding days where one
 observer photographed 3+ distinct fish species in the area — strong
 behavioural evidence of a real dive, regardless of species or local fishing
 rules (this works even outside a no-take marine reserve, since anglers rarely
@@ -25,12 +27,11 @@ always favour NW-N-NE either: each site's favourable direction (if any) was
 found by breaking wind direction into 16, 8, and 4 compass sectors and
 checking whether a consistent favoured direction held across all three
 resolutions - Goat Island and Porirua both turned out to favour a different,
-site-specific direction. Porirua and Bay of Islands were found via a national
-scan (binning ~22,000 NZ fish photos into a grid and ranking cells by the same
-3+-species-day signal) rather than being picked by name; Waikawau, Kaikoura,
-and New Plymouth were checked the same way but didn't have enough data to
-trust a derived rule. See each location's "How this rule was derived" note in
-the app's Info panel for the numbers behind it.
+site-specific direction. Porirua, Bay of Islands, Kapiti, and Torbay were
+found via a national scan (binning tens of thousands of NZ fish photos into a
+grid and ranking cells by the same 3+-species-day signal) rather than being
+picked by name; Waikawau, Kaikoura, New Plymouth, and Dunedin were checked the
+same way but didn't have enough data to trust a derived rule.
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
   directly or serve it via GitHub Pages. Location tabs at the top (your choice
