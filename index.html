@@ -6,14 +6,14 @@
 <title>Gisborne Dive Conditions</title>
 <style>
   :root {
-    --bg: #0b1220;
-    --card: #121b2e;
-    --card-border: #223052;
-    --text: #e8edf7;
-    --muted: #93a1c2;
+    --bg: #12191f;
+    --card: #1b262e;
+    --card-border: #33454f;
+    --text: #eaf2f7;
+    --muted: #8fa3ac;
     --good: #29c46a;
     --bad: #e5484d;
-    --accent: #4f8cff;
+    --accent: #2fb6ff;
   }
   * { box-sizing: border-box; }
   body {
@@ -26,22 +26,26 @@
   .wrap { max-width: 900px; margin: 0 auto; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
-  .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .days { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (min-width: 800px) {
+    .days { grid-template-columns: repeat(4, 1fr); }
+  }
   .card {
     background: var(--card);
     border: 1px solid var(--card-border);
     border-radius: 12px;
     padding: 18px;
   }
-  .card h2 { margin: 0 0 2px; font-size: 1.05rem; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card h2 { margin: 0; font-size: 1.05rem; }
   .card .date { color: var(--muted); font-size: 0.8rem; margin-bottom: 12px; }
   .verdict {
     display: inline-block;
+    flex: 0 0 auto;
     font-weight: 700;
     font-size: 0.95rem;
     padding: 4px 12px;
     border-radius: 999px;
-    margin-bottom: 12px;
   }
   .verdict.dive { background: rgba(41,196,106,0.15); color: var(--good); }
   .verdict.no-dive { background: rgba(229,72,77,0.15); color: var(--bad); }
@@ -114,12 +118,26 @@
   .tide-chip.low { color: #f0b955; }
   .info-section-title { margin: 14px 0 4px; font-weight: 600; color: var(--text); }
   .info-section-title:first-child { margin-top: 0; }
+  .loc-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .loc-tab {
+    border: 1px solid var(--card-border);
+    background: var(--card);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .loc-tab.active { background: var(--accent); border-color: var(--accent); color: #0b1220; }
+  .hist-btn.hist-btn-month { font-size: 0.95rem; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Gisborne Dive Conditions</h1>
-  <div class="sub">-38.6623, 178.0176 &middot; data: Open-Meteo (marine + weather forecast)</div>
+  <h1>Dive Conditions</h1>
+  <div class="loc-tabs" id="locTabs"></div>
+  <div class="sub" id="subLine">Loading&hellip;</div>
   <div id="status">Loading live conditions&hellip;</div>
   <div class="days" id="days" style="display:none;"></div>
 
@@ -127,12 +145,14 @@
     <h2>Suitability history</h2>
     <div class="history-range" id="historyRange">Loading history&hellip;</div>
     <div class="history-row">
+      <button class="hist-btn hist-btn-month" id="histLeftMonth" aria-label="Jump back a month" disabled>&laquo;</button>
       <button class="hist-btn" id="histLeft" aria-label="Scroll earlier" disabled>&lsaquo;</button>
       <div class="history-chart-wrap">
         <div class="history-chart" id="historyChart"></div>
         <div class="history-labels" id="historyLabels"></div>
       </div>
       <button class="hist-btn" id="histRight" aria-label="Scroll later" disabled>&rsaquo;</button>
+      <button class="hist-btn hist-btn-month" id="histRightMonth" aria-label="Jump forward a month" disabled>&raquo;</button>
     </div>
   </div>
 
@@ -163,12 +183,26 @@
       <li>Swell figures use Open-Meteo's <code>swell_wave_height_max</code> / <code>swell_wave_direction_dominant</code> (the swell component only, not wind-chop or combined wave height).</li>
       <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
       <li>Tide times/heights come from Open-Meteo's modeled sea level curve (<code>sea_level_height_msl</code>, hourly), not an official NZ tide table &mdash; highs/lows are found by scanning for turning points in that curve, so times are only accurate to the nearest hour, and heights are relative to mean sea level rather than a navigational chart datum. Cross-check LINZ or MetService if you need precise tide timing.</li>
+      <li>"Gisborne / Wainui" is one combined location, not two &mdash; at Open-Meteo's model resolution here (~9km for swell, ~11km for wind/rain), Wainui's coordinates land in the exact same grid cell as Gisborne town, so a separate Wainui tab would just duplicate these numbers. Makorori is far enough along the coast to fall in a genuinely different cell.</li>
     </ul>
   </details>
 </div>
 
 <script>
-const LAT = -38.6623, LON = 178.0176;
+const LOCATIONS = {
+  gisborne: { name: "Gisborne / Wainui", lat: -38.6623, lon: 178.0176 },
+  makorori: { name: "Makorori", lat: -38.65, lon: 178.13 },
+};
+
+function loadSavedLocation() {
+  try {
+    const saved = localStorage.getItem("diveLocation");
+    if (saved && LOCATIONS[saved]) return saved;
+  } catch (e) { /* localStorage unavailable - fall back to default */ }
+  return "gisborne";
+}
+
+let currentLocKey = loadSavedLocation();
 
 function compass(deg) {
   const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
@@ -248,10 +282,11 @@ function findTideExtremes(times, heights) {
 const FORECAST_DAYS = 4; // today + 3 days ahead
 
 async function loadConditions() {
-  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}` +
+  const { lat, lon } = LOCATIONS[currentLocKey];
+  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
     `&daily=swell_wave_height_max,swell_wave_direction_dominant` +
     `&hourly=sea_level_height_msl&timezone=auto&forecast_days=${FORECAST_DAYS}`;
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto&past_days=7&forecast_days=${FORECAST_DAYS}`;
 
   const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
@@ -333,9 +368,11 @@ function render(results) {
       return `<span class="chip ${ok ? 'ok' : 'no'}">${compass(d)}</span>`;
     }).join("");
     card.innerHTML = `
-      <h2>${label}</h2>
+      <div class="card-header">
+        <h2>${label}</h2>
+        <div class="verdict ${r.allPass ? 'dive' : 'no-dive'}">${r.allPass ? 'DIVE' : 'NO DIVE'}</div>
+      </div>
       <div class="date">${fmtDate(r.date)}</div>
-      <div class="verdict ${r.allPass ? 'dive' : 'no-dive'}">${r.allPass ? 'DIVE' : 'NO DIVE'}</div>
       <div class="score-row">
         <div class="score-bar"><div style="width:${r.overallScore}%; background:${scoreColor(r.overallScore)};"></div></div>
         <span class="score-label" style="color:${scoreColor(r.overallScore)};">${r.overallScore} &middot; ${scoreLabel(r.overallScore)}</span>
@@ -359,15 +396,12 @@ function render(results) {
   document.getElementById("status").style.display = "none";
 }
 
-loadConditions()
-  .then(render)
-  .catch(err => {
-    document.getElementById("status").textContent = "Couldn't load conditions: " + err.message;
-  });
-
 // --- Suitability history chart ---
 
-const HIST_YEARS = 2;
+// Open-Meteo's marine archive for this coast only has swell data from ~Oct 2021
+// onward (verified against the live API - earlier dates return null), so the
+// history chart is anchored there rather than a rolling "N years back" window.
+const HIST_START_DATE = "2021-09-24"; // 7-day buffer before swell data begins (~Oct 1 2021)
 const HIST_WINDOW = 30;
 
 function isoDate(d) {
@@ -385,16 +419,15 @@ function fmtDateLong(iso) {
 }
 
 async function loadHistory() {
+  const { lat, lon } = LOCATIONS[currentLocKey];
   const today = new Date();
-  const start = new Date(today);
-  start.setDate(start.getDate() - (HIST_YEARS * 365 + 7)); // +7 day buffer for rolling windows
-  const startStr = isoDate(start);
+  const startStr = HIST_START_DATE;
   const endStr = isoDate(today);
 
-  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}` +
+  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
     `&daily=swell_wave_height_max,swell_wave_direction_dominant&timezone=auto` +
     `&start_date=${startStr}&end_date=${endStr}`;
-  const weatherUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${LAT}&longitude=${LON}` +
+  const weatherUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
     `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto` +
     `&start_date=${startStr}&end_date=${endStr}`;
 
@@ -442,6 +475,7 @@ async function loadHistory() {
 }
 
 let historyData = [];
+let dateToIndex = new Map();
 let windowEnd = 0; // index into historyData of the last (most recent) visible day
 
 function renderHistoryChart() {
@@ -465,8 +499,12 @@ function renderHistoryChart() {
   document.getElementById("historyRange").textContent =
     `${fmtDateLong(slice[0].date)} – ${fmtDateLong(slice[slice.length - 1].date)}`;
 
-  document.getElementById("histLeft").disabled = start <= 0;
-  document.getElementById("histRight").disabled = windowEnd >= historyData.length - 1;
+  const atStart = start <= 0;
+  const atEnd = windowEnd >= historyData.length - 1;
+  document.getElementById("histLeft").disabled = atStart;
+  document.getElementById("histRight").disabled = atEnd;
+  document.getElementById("histLeftMonth").disabled = atStart;
+  document.getElementById("histRightMonth").disabled = atEnd;
 }
 
 function stepHistory(delta) {
@@ -477,14 +515,32 @@ function stepHistory(delta) {
   return true;
 }
 
-function setupHoldButton(el, delta) {
+function stepHistoryByMonths(delta) {
+  const current = new Date(historyData[windowEnd].date + "T00:00:00");
+  current.setMonth(current.getMonth() + delta);
+  const targetIso = isoDate(current);
+
+  let idx = dateToIndex.get(targetIso);
+  if (idx === undefined) {
+    // No exact match (shouldn't normally happen on a contiguous daily series) -
+    // fall back to an approximate day-count jump in the same direction.
+    idx = windowEnd + delta * 30;
+  }
+  idx = Math.min(historyData.length - 1, Math.max(HIST_WINDOW - 1, idx));
+  if (idx === windowEnd) return false;
+  windowEnd = idx;
+  renderHistoryChart();
+  return true;
+}
+
+function setupHoldButton(el, stepFn) {
   let holdTimer = null;
   let active = false;
   let speed = 0;
 
   function loop() {
     if (!active) return;
-    const moved = stepHistory(delta);
+    const moved = stepFn();
     if (!moved) { stopHold(); return; }
     speed = Math.max(35, speed * 0.85);
     holdTimer = setTimeout(loop, speed);
@@ -495,7 +551,7 @@ function setupHoldButton(el, delta) {
     if (active) return;
     active = true;
     speed = 300;
-    stepHistory(delta); // immediate first step
+    stepFn(); // immediate first step
     holdTimer = setTimeout(loop, 400); // pause before auto-repeat kicks in
   }
 
@@ -510,17 +566,59 @@ function setupHoldButton(el, delta) {
   ["mouseup", "mouseleave", "touchend", "touchcancel"].forEach(evt => el.addEventListener(evt, stopHold));
 }
 
-loadHistory()
-  .then(history => {
-    historyData = history;
-    windowEnd = historyData.length - 1;
-    renderHistoryChart();
-    setupHoldButton(document.getElementById("histLeft"), -1);
-    setupHoldButton(document.getElementById("histRight"), 1);
-  })
-  .catch(err => {
-    document.getElementById("historyRange").textContent = "Couldn't load history: " + err.message;
+// --- Location switching ---
+
+function renderLocTabs() {
+  const container = document.getElementById("locTabs");
+  container.innerHTML = Object.entries(LOCATIONS).map(([key, loc]) =>
+    `<button class="loc-tab${key === currentLocKey ? ' active' : ''}" data-loc="${key}">${loc.name}</button>`
+  ).join("");
+  container.querySelectorAll(".loc-tab").forEach(btn => {
+    btn.addEventListener("click", () => selectLocation(btn.dataset.loc));
   });
+}
+
+function selectLocation(key) {
+  if (key === currentLocKey) return;
+  currentLocKey = key;
+  try { localStorage.setItem("diveLocation", key); } catch (e) { /* ignore */ }
+  renderLocTabs();
+  refreshAll();
+}
+
+function refreshAll() {
+  const loc = LOCATIONS[currentLocKey];
+  document.getElementById("subLine").textContent =
+    `${loc.name} (${loc.lat}, ${loc.lon}) · data: Open-Meteo (marine + weather forecast)`;
+
+  document.getElementById("status").style.display = "block";
+  document.getElementById("status").textContent = "Loading live conditions…";
+  document.getElementById("days").style.display = "none";
+  loadConditions()
+    .then(render)
+    .catch(err => {
+      document.getElementById("status").textContent = "Couldn't load conditions: " + err.message;
+    });
+
+  document.getElementById("historyRange").textContent = "Loading history…";
+  loadHistory()
+    .then(history => {
+      historyData = history;
+      dateToIndex = new Map(history.map((d, i) => [d.date, i]));
+      windowEnd = historyData.length - 1;
+      renderHistoryChart();
+    })
+    .catch(err => {
+      document.getElementById("historyRange").textContent = "Couldn't load history: " + err.message;
+    });
+}
+
+renderLocTabs();
+refreshAll();
+setupHoldButton(document.getElementById("histLeft"), () => stepHistory(-1));
+setupHoldButton(document.getElementById("histRight"), () => stepHistory(1));
+setupHoldButton(document.getElementById("histLeftMonth"), () => stepHistoryByMonths(-1));
+setupHoldButton(document.getElementById("histRightMonth"), () => stepHistoryByMonths(1));
 </script>
 </body>
 </html>

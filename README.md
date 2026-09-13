@@ -1,15 +1,18 @@
-# Gisborne Dive Conditions
+# Dive Conditions
 
-Checks Gisborne, NZ dive conditions against a personal rule (swell height/direction,
-5-day wind trend, trailing 7-day rain) using free Open-Meteo data.
+Checks dive conditions on the Gisborne, NZ coast against a personal rule (swell
+height/direction, 5-day wind trend, trailing 7-day rain) using free Open-Meteo
+data, for either of two locations: Gisborne/Wainui or Makorori (they're far
+enough apart to fall in different Open-Meteo grid cells).
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
   directly or serve it via GitHub Pages. Shows a Dive/No-dive verdict plus a
   0-100 suitability score for today and the next 3 days, the full breakdown
   (including high/low tide times and heights), a scrollable chart of the
-  suitability score over the last 2 years (30 days at a time; hold the arrows
-  to scroll faster), and an Info dropdown with the rule, scoring method, and
-  assumptions.
+  suitability score back to October 2021 (when swell data for this coast
+  starts) — 30 days at a time, hold an arrow to scroll faster, or use the
+  double-arrow to jump a month at a time — and an Info dropdown with the rule,
+  scoring method, and assumptions.
 - **`dive_check.py`** — same rule in Python; sends a heads-up (email and/or a
   phone push notification via [ntfy.sh](https://ntfy.sh)) only on days that
   pass. Run it on a schedule since a static page can't notify you itself.
