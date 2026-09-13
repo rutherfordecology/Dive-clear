@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Checks today's Gisborne dive conditions against a personal rule and emails
-a heads-up only on days that pass. Meant to run on a schedule (see
-.github/workflows/dive-check.yml) since this has no server of its own.
+Checks today's Gisborne dive conditions against a personal rule and sends
+a heads-up only on days that pass - by email, and/or as a phone push
+notification via ntfy.sh if NTFY_TOPIC is set. Meant to run on a schedule
+(see .github/workflows/dive-check.yml) since this has no server of its own.
 
 Rule:
   - Swell < 1.2 m if from S/SW/SE, or < 2.0 m if from N/NE/NW
@@ -115,17 +116,36 @@ def send_email(subject, body):
         smtp.sendmail(user, [to_addr], msg.as_string())
 
 
+def send_ntfy(subject, body):
+    topic = os.environ["NTFY_TOPIC"]
+    requests.post(
+        f"https://ntfy.sh/{topic}",
+        data=body.encode("utf-8"),
+        headers={"Title": subject},
+        timeout=30,
+    )
+
+
 def main():
     r = fetch_conditions()
     print(
         f"{r['date']}: swell={r['swell_pass']} wind={r['wind_pass']} "
         f"rain={r['rain_pass']} -> {'DIVE' if r['all_pass'] else 'no dive'}"
     )
-    if r["all_pass"]:
-        send_email(f"Dive conditions good for {r['date']} - Gisborne", build_email_body(r))
+    if not r["all_pass"]:
+        print("Conditions don't pass - no notification sent.")
+        return
+
+    subject = f"Dive conditions good for {r['date']} - Gisborne"
+    body = build_email_body(r)
+
+    if os.environ.get("EMAIL_USER"):
+        send_email(subject, body)
         print("Email sent.")
-    else:
-        print("Conditions don't pass - no email sent.")
+
+    if os.environ.get("NTFY_TOPIC"):
+        send_ntfy(subject, body)
+        print("Push notification sent.")
 
 
 if __name__ == "__main__":
