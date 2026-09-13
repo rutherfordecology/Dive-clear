@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gisborne Dive Conditions</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --card: #121b2e;
+    --card-border: #223052;
+    --text: #e8edf7;
+    --muted: #93a1c2;
+    --good: #29c46a;
+    --bad: #e5484d;
+    --accent: #4f8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+  .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .card h2 { margin: 0 0 2px; font-size: 1.05rem; }
+  .card .date { color: var(--muted); font-size: 0.8rem; margin-bottom: 12px; }
+  .verdict {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  .verdict.dive { background: rgba(41,196,106,0.15); color: var(--good); }
+  .verdict.no-dive { background: rgba(229,72,77,0.15); color: var(--bad); }
+  .rule { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 4px 0; border-top: 1px solid var(--card-border); }
+  .rule:first-of-type { border-top: none; }
+  .rule .label { color: var(--muted); }
+  .rule .pass { color: var(--good); }
+  .rule .fail { color: var(--bad); }
+  .wind-chips { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+  .chip { font-size: 0.7rem; padding: 2px 6px; border-radius: 6px; background: var(--card-border); }
+  .chip.ok { background: rgba(41,196,106,0.2); color: var(--good); }
+  .chip.no { background: rgba(229,72,77,0.2); color: var(--bad); }
+  details {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+  }
+  summary { cursor: pointer; font-weight: 600; }
+  details ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+  #status { color: var(--muted); font-size: 0.9rem; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gisborne Dive Conditions</h1>
+  <div class="sub">-38.6623, 178.0176 &middot; data: Open-Meteo (marine + weather forecast)</div>
+  <div id="status">Loading live conditions&hellip;</div>
+  <div class="days" id="days" style="display:none;"></div>
+
+  <details>
+    <summary>Rule</summary>
+    <ul>
+      <li>Swell &lt; 1.2 m if arriving from S / SW / SE, or &lt; 2.0 m if from N / NE / NW.</li>
+      <li>Wind predominantly NW&rarr;N&rarr;NE for the last 5 days.</li>
+      <li>Less than 30 mm of rain in the trailing 7 days.</li>
+      <li>All three must pass for a day to be called "Dive".</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>Assumptions (things I decided, not things you specified)</summary>
+    <ul>
+      <li>Due-west swell (247.5&deg;&ndash;292.5&deg;) isn't covered by your rule &mdash; treated conservatively using the tighter 1.2 m threshold.</li>
+      <li>"Predominantly NW&rarr;N&rarr;NE for 5 days" is implemented as: at least 4 of the last 5 days had a dominant wind direction inside the 292.5&deg;&ndash;67.5&deg; arc. This 4-of-5 threshold is my assumption &mdash; change it in the code if you meant something stricter or looser.</li>
+      <li>For a given evaluation day, the "last 5 days" window ends on and includes that day itself (using forecast wind direction for future days).</li>
+      <li>The 7-day rain window ends on and includes the day before the evaluation day (i.e. it doesn't count rain forecast to fall later on the evaluation day itself).</li>
+      <li>Swell figures use Open-Meteo's <code>swell_wave_height_max</code> / <code>swell_wave_direction_dominant</code> (the swell component only, not wind-chop or combined wave height).</li>
+      <li>Wind direction uses Open-Meteo's <code>winddirection_10m_dominant</code> daily aggregate.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+const LAT = -38.6623, LON = 178.0176;
+
+function compass(deg) {
+  const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  return dirs[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+}
+
+function isFavourableWindDir(deg) {
+  const d = ((deg % 360) + 360) % 360;
+  return d >= 292.5 || d < 67.5; // NW -> N -> NE arc
+}
+
+function swellThreshold(deg) {
+  const d = ((deg % 360) + 360) % 360;
+  if (d >= 112.5 && d < 247.5) return 1.2;   // S / SW / SE
+  if (d >= 292.5 || d < 67.5) return 2.0;    // N / NE / NW
+  return 1.2; // due-W (247.5-292.5), not covered by the rule - conservative
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+async function loadConditions() {
+  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}` +
+    `&daily=swell_wave_height_max,swell_wave_direction_dominant&timezone=auto&forecast_days=3`;
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+    `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto&past_days=7&forecast_days=3`;
+
+  const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
+  if (!marineRes.ok || !weatherRes.ok) throw new Error("Open-Meteo request failed");
+  const marine = await marineRes.json();
+  const weather = await weatherRes.json();
+
+  const wTime = weather.daily.time;               // 10 days: 7 past + today + next 2
+  const windDir = weather.daily.winddirection_10m_dominant;
+  const rain = weather.daily.precipitation_sum;
+  const todayIdxInWeather = wTime.length - 3;      // index of "today" in the weather arrays
+
+  const mTime = marine.daily.time;                 // 3 days: today, tomorrow, day-after
+  const swellH = marine.daily.swell_wave_height_max;
+  const swellDir = marine.daily.swell_wave_direction_dominant;
+
+  const results = [];
+  for (let offset = 0; offset < 3; offset++) {
+    const weatherIdx = todayIdxInWeather + offset;
+
+    // Wind: last 5 days ending on (and including) this evaluation day
+    const windWindow = [];
+    for (let k = weatherIdx - 4; k <= weatherIdx; k++) {
+      if (k >= 0 && k < windDir.length) windWindow.push(windDir[k]);
+    }
+    const favourableCount = windWindow.filter(isFavourableWindDir).length;
+    const windPass = favourableCount >= 4;
+
+    // Rain: 7 days ending on (and including) the day BEFORE this evaluation day
+    let rainTotal = 0;
+    for (let k = weatherIdx - 7; k <= weatherIdx - 1; k++) {
+      if (k >= 0 && k < rain.length && rain[k] != null) rainTotal += rain[k];
+    }
+    const rainPass = rainTotal < 30;
+
+    // Swell
+    const sH = swellH[offset];
+    const sDir = swellDir[offset];
+    const threshold = swellThreshold(sDir);
+    const swellPass = sH != null && sH < threshold;
+
+    const allPass = windPass && rainPass && swellPass;
+
+    results.push({
+      date: mTime[offset],
+      swellPass, sH, sDir, threshold,
+      windPass, favourableCount, windWindow,
+      rainPass, rainTotal,
+      allPass
+    });
+  }
+  return results;
+}
+
+function render(results) {
+  const container = document.getElementById("days");
+  container.innerHTML = "";
+  results.forEach((r, i) => {
+    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : "Day after tomorrow";
+    const card = document.createElement("div");
+    card.className = "card";
+    const chips = r.windWindow.map(d => {
+      const ok = isFavourableWindDir(d);
+      return `<span class="chip ${ok ? 'ok' : 'no'}">${compass(d)}</span>`;
+    }).join("");
+    card.innerHTML = `
+      <h2>${label}</h2>
+      <div class="date">${fmtDate(r.date)}</div>
+      <div class="verdict ${r.allPass ? 'dive' : 'no-dive'}">${r.allPass ? 'DIVE' : 'NO DIVE'}</div>
+      <div class="rule"><span class="label">Swell</span>
+        <span class="${r.swellPass ? 'pass' : 'fail'}">${r.sH != null ? r.sH.toFixed(1) : '?'} m from ${compass(r.sDir)} (need &lt; ${r.threshold} m)</span>
+      </div>
+      <div class="rule"><span class="label">Wind (5d)</span>
+        <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/5 days NW&ndash;N&ndash;NE</span>
+      </div>
+      <div class="wind-chips">${chips}</div>
+      <div class="rule"><span class="label">Rain (7d trailing)</span>
+        <span class="${r.rainPass ? 'pass' : 'fail'}">${r.rainTotal.toFixed(1)} mm (need &lt; 30 mm)</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+  container.style.display = "grid";
+  document.getElementById("status").style.display = "none";
+}
+
+loadConditions()
+  .then(render)
+  .catch(err => {
+    document.getElementById("status").textContent = "Couldn't load conditions: " + err.message;
+  });
+</script>
+</body>
+</html>
