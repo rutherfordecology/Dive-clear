@@ -197,7 +197,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.11";
+const APP_VERSION = "1.12";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 const LOCATIONS = {
@@ -462,7 +462,11 @@ function render(results) {
 // onward (verified against the live API - earlier dates return null), so the
 // history chart is anchored there rather than a rolling "N years back" window.
 const HIST_START_DATE = "2021-09-24"; // 7-day buffer before swell data begins (~Oct 1 2021)
-const HIST_WINDOW = 30;
+const MOBILE_BREAKPOINT = 800; // matches the .days grid breakpoint
+
+function histWindowSize() {
+  return window.innerWidth < MOBILE_BREAKPOINT ? 7 : 30;
+}
 
 function isoDate(d) {
   return d.toISOString().slice(0, 10);
@@ -471,6 +475,10 @@ function isoDate(d) {
 function fmtDateShort(iso) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function fmtDayNum(iso) {
+  return String(new Date(iso + "T00:00:00").getDate());
 }
 
 function fmtDateLong(iso) {
@@ -539,7 +547,8 @@ let dateToIndex = new Map();
 let windowEnd = 0; // index into historyData of the last (most recent) visible day
 
 function renderHistoryChart() {
-  const start = windowEnd - HIST_WINDOW + 1;
+  const windowSize = histWindowSize();
+  const start = windowEnd - windowSize + 1;
   const slice = historyData.slice(start, windowEnd + 1);
 
   const chartEl = document.getElementById("historyChart");
@@ -551,9 +560,13 @@ function renderHistoryChart() {
   `).join("");
 
   const labelsEl = document.getElementById("historyLabels");
+  const labelStep = windowSize <= 10 ? 1 : 5;
   labelsEl.innerHTML = slice.map((d, idx) => {
-    const show = idx % 5 === 0 || idx === slice.length - 1;
-    return `<div class="hist-label-col">${show ? fmtDateShort(d.date) : ""}</div>`;
+    const show = idx % labelStep === 0 || idx === slice.length - 1;
+    // With every column labeled (narrow/mobile view), a bare day number avoids
+    // adjacent labels overlapping - the month is already shown in the range line above.
+    const text = labelStep === 1 ? fmtDayNum(d.date) : fmtDateShort(d.date);
+    return `<div class="hist-label-col">${show ? text : ""}</div>`;
   }).join("");
 
   document.getElementById("historyRange").textContent =
@@ -568,7 +581,7 @@ function renderHistoryChart() {
 }
 
 function stepHistory(delta) {
-  const newEnd = Math.min(historyData.length - 1, Math.max(HIST_WINDOW - 1, windowEnd + delta));
+  const newEnd = Math.min(historyData.length - 1, Math.max(histWindowSize() - 1, windowEnd + delta));
   if (newEnd === windowEnd) return false;
   windowEnd = newEnd;
   renderHistoryChart();
@@ -586,7 +599,7 @@ function stepHistoryByMonths(delta) {
     // fall back to an approximate day-count jump in the same direction.
     idx = windowEnd + delta * 30;
   }
-  idx = Math.min(historyData.length - 1, Math.max(HIST_WINDOW - 1, idx));
+  idx = Math.min(historyData.length - 1, Math.max(histWindowSize() - 1, idx));
   if (idx === windowEnd) return false;
   windowEnd = idx;
   renderHistoryChart();
@@ -679,6 +692,18 @@ setupHoldButton(document.getElementById("histLeft"), () => stepHistory(-1));
 setupHoldButton(document.getElementById("histRight"), () => stepHistory(1));
 setupHoldButton(document.getElementById("histLeftMonth"), () => stepHistoryByMonths(-1));
 setupHoldButton(document.getElementById("histRightMonth"), () => stepHistoryByMonths(1));
+
+// Re-render the history chart if the viewport crosses the mobile breakpoint
+// (e.g. rotating a phone), since the window size (7 vs 30 days) depends on it.
+let lastHistWindowSize = null;
+window.addEventListener("resize", () => {
+  if (!historyData.length) return;
+  const size = histWindowSize();
+  if (size === lastHistWindowSize) return;
+  lastHistWindowSize = size;
+  windowEnd = Math.max(size - 1, Math.min(windowEnd, historyData.length - 1));
+  renderHistoryChart();
+});
 </script>
 </body>
 </html>

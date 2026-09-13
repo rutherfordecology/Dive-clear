@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.12
+- History chart shows 7 days at a time on mobile-width screens (was 30, cramped and unreadable) instead of the desktop's 30. Labels show a bare day number when every column is labeled, to avoid overlap.
+
 ## v1.11
 - Add a Morning/Midday/Afternoon swell breakdown per day, using hourly swell data instead of just the daily max/dominant-direction figures.
 
