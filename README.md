@@ -1,7 +1,7 @@
 # Dive Conditions
 
 Checks dive/snorkel conditions against a rule using free Open-Meteo data, for
-nine NZ locations:
+19 NZ locations:
 
 | Location | Rule | Basis |
 |---|---|---|
@@ -14,8 +14,18 @@ nine NZ locations:
 | Bay of Islands | Rain < 25mm/7d only | Derived, smaller sample - more tentative |
 | Kapiti | Swell < 0.8m only | Derived, strongest single-factor result found |
 | Torbay | Swell < 0.25m only | Derived, smaller sample - more tentative |
+| Ohinau Island | Swell < 1.0m, rain < 25mm/7d | Derived, one of the strongest results found |
+| Tutukaka | Rain < 30mm/7d only | Derived from a full national cluster sweep |
+| Kaikoura | Swell < 1.5m only | Derived - previously left out, now included |
+| Matauri Bay | Swell < 1.4m, rain < 25mm/7d | Derived from a full national cluster sweep |
+| Stewart Island | Swell < 0.7m only | Derived from a full national cluster sweep |
+| Akaroa | Swell < 1.6m only | Derived, smaller sample - more tentative |
+| Mangawhai | Swell < 0.6m only | Derived, strongest single-factor result found |
+| Far North | Swell < 1.5m, rain < 20mm/7d | Derived, smallest sample in the app - most tentative |
+| Waiheke Island | Swell < 0.3m, rain < 20mm/7d | Derived from a full national cluster sweep |
+| Great Barrier Island | Swell < 0.9m only | Derived, smaller sample - more tentative |
 
-The seven "derived" locations were calibrated by finding days where one
+The 17 "derived" locations were calibrated by finding days where one
 observer photographed 3+ distinct fish species in the area — strong
 behavioural evidence of a real dive, regardless of species or local fishing
 rules (this works even outside a no-take marine reserve, since anglers rarely
@@ -27,11 +37,22 @@ always favour NW-N-NE either: each site's favourable direction (if any) was
 found by breaking wind direction into 16, 8, and 4 compass sectors and
 checking whether a consistent favoured direction held across all three
 resolutions - Goat Island and Porirua both turned out to favour a different,
-site-specific direction. Porirua, Bay of Islands, Kapiti, and Torbay were
-found via a national scan (binning tens of thousands of NZ fish photos into a
-grid and ranking cells by the same 3+-species-day signal) rather than being
-picked by name; Waikawau, Kaikoura, New Plymouth, and Dunedin were checked the
-same way but didn't have enough data to trust a derived rule.
+site-specific direction (a few of the newer sites show signs of the same
+pattern but haven't had the sector check run yet, so their wind rule is left
+out for now rather than guessed at).
+
+Porirua, Bay of Islands, Kapiti, Torbay, Tutukaka, Matauri Bay, Stewart
+Island, Akaroa, Mangawhai, Far North, Waiheke Island, and Great Barrier Island
+were all found via a national scan (binning fish photos nationwide into a grid
+and ranking cells by the same 3+-species-day signal) rather than being picked
+by name. Ohinau Island came from testing a different idea directly: comparing
+confirmed dive days against every other day at the same spot, rather than
+against random days nationally. Checked but left out for having too little
+data or no clean, consistent signal: Waikawau, New Plymouth, Dunedin, a couple
+of further Northland clusters, a second Banks Peninsula cluster near
+Lyttelton, an Auckland-suburbs cluster, and Fiordland (where swell went the
+wrong direction, most likely because a single offshore swell reading doesn't
+reflect conditions inside a sheltered fiord).
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
   directly or serve it via GitHub Pages. Location tabs at the top (your choice

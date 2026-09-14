@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.17
+- Add **Ohinau Island** (swell + rain), found by directly testing an idea: comparing conditions on confirmed dive days against every other kind of day at the same spot, rather than against random days nationally. Swell showed the strongest single-factor result checked so far (Cohen's d -1.15).
+- Ran a full national sweep of every remaining fish-photo cluster in the country (not just individually-picked candidates) and derived rules for every one with enough data and a real, consistent signal. Added eight more: **Tutukaka** (rain only), **Kaikoura** (swell - previously left out, now included after a cleaner re-check), **Matauri Bay** (swell + rain), **Stewart Island** (swell), **Akaroa** (swell, tentative), **Mangawhai** (swell - the site originally suggested as a data-rich example), **Far North** (swell + rain, smallest sample in the app so most tentative), and **Waiheke Island** (swell + rain) and **Great Barrier Island** (swell, tentative).
+- Checked but left out: Dunedin, two further Northland clusters, a second Banks Peninsula cluster, an Auckland-suburbs cluster, Fiordland (swell went the wrong direction - likely because the local swell reading doesn't reflect sheltered fiord conditions), and New Plymouth - each either too thin on data or without a clean, consistent signal.
+- The app now covers 19 locations in total.
+
 ## v1.16
 - Add two new locations found via the national grid scan and re-checked with the reliable one-observer-3+-species method: **Kapiti** (swell only, under ~0.8m - the strongest single-factor result seen in this whole project) and **Torbay** (swell only, under ~0.25m - a sheltered inner-Hauraki-Gulf spot similar to Goat Island, smaller sample so treated as more tentative).
 - Checked but skipped Dunedin: too few qualifying multi-species days (19) to trust a derived rule.

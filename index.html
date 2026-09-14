@@ -172,7 +172,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.16";
+const APP_VERSION = "1.17";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 // Each location's rule is either the user's own calibrated rule (Gisborne,
@@ -322,6 +322,137 @@ const LOCATIONS = {
     notes: [
       "Also found via the national grid scan, re-derived the same way as Kapiti: 25 confirmed dive days vs 25 random days.",
       "Swell showed a moderate difference (0.16 m vs 0.21 m average, Cohen's d -0.44) - both numbers are tiny since this is a sheltered inner-Hauraki-Gulf spot, similar in character to Goat Island. Wind and rain showed only weak differences and aren't included. Smaller sample than most other derived sites, so treat this one as more tentative.",
+    ],
+  },
+  ohinau: {
+    name: "Ohinau Island", lat: -36.7286, lon: 175.8813,
+    rule: {
+      swell: { type: "flat", maxM: 1.0 },
+      wind: { enabled: false },
+      rain: { enabled: true, maxMm: 25, windowDays: 7 },
+    },
+    ruleText: ["Swell under about 1.0 m.", "Less than 25 mm of rain in the trailing 7 days."],
+    notes: [
+      "A small island off the Coromandel Peninsula, found by directly testing a users's idea: comparing conditions on confirmed dive days against every other kind of day at the same spot. 17 confirmed dive days vs 17 random days.",
+      "Swell showed the strongest single-factor result of any site checked so far (0.65 m vs 1.19 m average, Cohen's d -1.15). Rain also showed a real difference (24 mm vs 44 mm average, trailing 7 days, d -0.59). Wind showed none.",
+      "Smaller sample than most other derived sites (17) but the effect here is far stronger and more consistent, so it's included.",
+    ],
+  },
+  tutukaka: {
+    name: "Tutukaka", lat: -35.58, lon: 174.52,
+    rule: {
+      swell: { enabled: false },
+      wind: { enabled: false },
+      rain: { enabled: true, maxMm: 30, windowDays: 7 },
+    },
+    ruleText: ["Less than 30 mm of rain in the trailing 7 days."],
+    notes: [
+      "Found via a full national sweep of every uncovered fish-photo cluster (not just a handful of guesses): 40 confirmed dive days vs 40 random days - the largest sample of any site added this round.",
+      "Rain was the only condition with a real difference (30 mm vs 55 mm average, trailing 7 days, Cohen's d -0.47). Swell and wind showed only weak differences, so this is a rain-only rule like Bay of Islands.",
+    ],
+  },
+  kaikoura: {
+    name: "Kaikoura", lat: -42.42, lon: 173.70,
+    rule: {
+      swell: { type: "flat", maxM: 1.5 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 1.5 m."],
+    notes: [
+      "Previously checked and left out for having too little data (only 16 dive days found with an earlier, cruder search radius). Re-checked in the national sweep with a cleaner query: 17 confirmed dive days vs 17 random days.",
+      "This time swell showed a real, moderate difference (1.0 m vs 1.4 m average, Cohen's d -0.63). Wind looked interesting too but hasn't been confirmed with the compass-sector check other sites' wind rules rely on, so it's left out for now. Rain showed no usable pattern.",
+    ],
+  },
+  matauribay: {
+    name: "Matauri Bay", lat: -34.99, lon: 173.93,
+    rule: {
+      swell: { type: "flat", maxM: 1.4 },
+      wind: { enabled: false },
+      rain: { enabled: true, maxMm: 25, windowDays: 7 },
+    },
+    ruleText: ["Swell under about 1.4 m.", "Less than 25 mm of rain in the trailing 7 days."],
+    notes: [
+      "Found via the national sweep - covers the Matauri Bay / Cavalli Islands stretch of Northland's east coast. 33 confirmed dive days vs 33 random days.",
+      "Both swell (0.9 m vs 1.4 m average, Cohen's d -0.54) and rain (26 mm vs 48 mm average, trailing 7 days, d -0.57) showed real, consistent differences. Wind showed a difference too, but in the opposite direction to the default assumption - a sign this site favours a non-standard wind direction the way Goat Island and Porirua do, which hasn't been confirmed with sector analysis yet, so wind is left out for now.",
+    ],
+  },
+  stewartisland: {
+    name: "Stewart Island", lat: -46.91, lon: 168.13,
+    rule: {
+      swell: { type: "flat", maxM: 0.7 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 0.7 m."],
+    notes: [
+      "Found via the national sweep, centred on Oban/Rakiura. 20 confirmed dive days vs 20 random days.",
+      "Swell showed a large, clean difference (0.4 m vs 0.7 m average, Cohen's d -0.82). Wind and rain showed no usable pattern, so this is a swell-only rule.",
+    ],
+  },
+  akaroa: {
+    name: "Akaroa", lat: -43.82, lon: 172.91,
+    rule: {
+      swell: { type: "flat", maxM: 1.6 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 1.6 m."],
+    notes: [
+      "Found via the national sweep, centred on Akaroa Harbour. 14 confirmed dive days vs 14 random days - one of the smaller samples added this round, so treat this rule as more tentative.",
+      "Swell showed a moderate difference (Cohen's d -0.44). Wind and rain showed no usable pattern. A nearby cell further round Banks Peninsula (towards Lyttelton) showed no signal at all, so this rule is specific to the Akaroa side, not the whole peninsula.",
+    ],
+  },
+  mangawhai: {
+    name: "Mangawhai", lat: -36.10, lon: 174.59,
+    rule: {
+      swell: { type: "flat", maxM: 0.6 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 0.6 m."],
+    notes: [
+      "The site originally suggested as an example of a data-rich cluster. 13 confirmed dive days vs 13 random days.",
+      "Swell showed a very large difference (0.4 m vs 0.8 m average, Cohen's d -0.99), among the strongest in the whole project despite the modest sample. Wind looked promising too (d -0.47) but hasn't been confirmed with the compass-sector check, so it's left out for now. Rain showed no usable pattern.",
+    ],
+  },
+  farnorth: {
+    name: "Far North", lat: -34.42, lon: 172.86,
+    rule: {
+      swell: { type: "flat", maxM: 1.5 },
+      wind: { enabled: false },
+      rain: { enabled: true, maxMm: 20, windowDays: 7 },
+    },
+    ruleText: ["Swell under about 1.5 m.", "Less than 20 mm of rain in the trailing 7 days."],
+    notes: [
+      "Found via the national sweep, covering a remote stretch of coastline near the very top of Northland with no single named town nearby. Only 10 confirmed dive days vs 10 random days - the smallest sample of any site in the app, so treat this rule as the most tentative of the lot.",
+      "Both swell (Cohen's d -1.19) and rain (d -1.07) showed very large, consistent differences despite the tiny sample. Included because the effect is so strong it seems unlikely to be pure chance, but this is the one rule here most likely to need revising once more data comes in.",
+    ],
+  },
+  waiheke: {
+    name: "Waiheke Island", lat: -36.70, lon: 174.98,
+    rule: {
+      swell: { type: "flat", maxM: 0.3 },
+      wind: { enabled: false },
+      rain: { enabled: true, maxMm: 20, windowDays: 7 },
+    },
+    ruleText: ["Swell under about 0.3 m.", "Less than 20 mm of rain in the trailing 7 days."],
+    notes: [
+      "Found via the national sweep. 18 confirmed dive days vs 18 random days.",
+      "Swell (Cohen's d -0.82) and rain (d -0.77) both showed large, consistent differences. The low swell threshold reflects Waiheke's sheltered Hauraki Gulf position, similar in character to Goat Island and Torbay. Wind showed no usable pattern.",
+    ],
+  },
+  greatbarrier: {
+    name: "Great Barrier Island", lat: -36.20, lon: 175.07,
+    rule: {
+      swell: { type: "flat", maxM: 0.9 },
+      wind: { enabled: false },
+      rain: { enabled: false },
+    },
+    ruleText: ["Swell under about 0.9 m."],
+    notes: [
+      "Found via the national sweep. 11 confirmed dive days vs 11 random days - a smaller sample, so treat this rule as more tentative.",
+      "Swell showed a moderate-to-large difference (Cohen's d -0.65). Wind showed a large difference too, but in the opposite direction to the default assumption - another likely non-standard favourable direction, unconfirmed by sector analysis - so it's left out for now. Rain showed no usable pattern.",
     ],
   },
 };
