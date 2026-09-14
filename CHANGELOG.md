@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.18
+- Add a simple map view: a "Map" button next to the title shows an outline of NZ with every location plotted as a dot, the current selection highlighted. Click any dot to switch to that location, same as the tabs above it.
+
 ## v1.17
 - Add **Ohinau Island** (swell + rain), found by directly testing an idea: comparing conditions on confirmed dive days against every other kind of day at the same spot, rather than against random days nationally. Swell showed the strongest single-factor result checked so far (Cohen's d -1.15).
 - Ran a full national sweep of every remaining fish-photo cluster in the country (not just individually-picked candidates) and derived rules for every one with enough data and a real, consistent signal. Added eight more: **Tutukaka** (rain only), **Kaikoura** (swell - previously left out, now included after a cleaner re-check), **Matauri Bay** (swell + rain), **Stewart Island** (swell), **Akaroa** (swell, tentative), **Mangawhai** (swell - the site originally suggested as a data-rich example), **Far North** (swell + rain, smallest sample in the app so most tentative), and **Waiheke Island** (swell + rain) and **Great Barrier Island** (swell, tentative).

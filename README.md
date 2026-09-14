@@ -56,14 +56,15 @@ reflect conditions inside a sheltered fiord).
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
   directly or serve it via GitHub Pages. Location tabs at the top (your choice
-  persists via localStorage); each shows a Dive/No-dive verdict plus a 0-100
-  suitability score for today and the next 3 days, the full breakdown for
-  whichever conditions apply at that site (including high/low tide times and
-  heights), a scrollable chart of the suitability score back to October 2021
-  (when swell data starts) — 30 days at a time on desktop, 7 on mobile, hold an
-  arrow to scroll faster or use the double-arrow to jump a month at a time —
-  and an Info dropdown with that site's specific rule, how it was derived,
-  scoring method, and assumptions.
+  persists via localStorage), plus a Map button showing every site plotted on
+  a simple NZ outline - click a dot to switch, same as the tabs. Each location
+  shows a Dive/No-dive verdict plus a 0-100 suitability score for today and
+  the next 3 days, the full breakdown for whichever conditions apply at that
+  site (including high/low tide times and heights), a scrollable chart of the
+  suitability score back to October 2021 (when swell data starts) - extending
+  into the forecast days with a hashed fill - 30 days at a time on desktop, 7
+  on mobile, hold an arrow to scroll faster or use the double-arrow to jump a
+  month at a time — and an Info dropdown with that site's specific rule.
 - **`dive_check.py`** — same rule in Python, for Gisborne only; sends a heads-up
   (email and/or a phone push notification via [ntfy.sh](https://ntfy.sh)) only
   on days that pass. Run it on a schedule since a static page can't notify you
