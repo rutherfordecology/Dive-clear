@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.20
+- Fix the default map view being an unreadable wall of overlapping name tags where sites cluster tightly (mainly around Auckland/Northland). Labels are now hidden whenever another dot sits within 36px of them on screen, showing only dots by default, and reappear progressively as zooming spreads the cluster apart. The currently selected site's tag always stays visible regardless of crowding.
+
 ## v1.19
 - The map is now open by default instead of hidden behind a button, with a minimise control to collapse it when you don't need it.
 - Location names are now tags directly on the map next to each site's dot, instead of a separate row of buttons above it.

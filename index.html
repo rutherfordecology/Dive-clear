@@ -207,7 +207,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.19";
+const APP_VERSION = "1.20";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 // Each location's rule is either the user's own calibrated rule (Gisborne,
@@ -1023,12 +1023,39 @@ function applyMapViewBox() {
   updateMapLabelSizes(w);
 }
 
+const MAP_LABEL_COLLISION_PX = 36; // hide a label if another dot is closer than this on screen
+
 function updateMapLabelSizes(viewBoxWidth) {
   const svg = document.getElementById("mapSvg");
   const rect = svg.getBoundingClientRect();
   if (!rect.width) return;
-  const fontUnits = MAP_LABEL_PX / (rect.width / viewBoxWidth);
+  const pxPerUnit = rect.width / viewBoxWidth;
+  const fontUnits = MAP_LABEL_PX / pxPerUnit;
   document.querySelectorAll(".map-label").forEach(el => el.setAttribute("font-size", fontUnits.toFixed(2)));
+
+  // Hide labels that would collide with a neighbour's dot at the current
+  // zoom, so the default zoomed-out view shows dots only rather than a
+  // wall of overlapping text; labels reappear as zooming spreads dots out.
+  // The currently selected site's label always stays visible.
+  const vb = mapViewBox();
+  const points = Object.entries(LOCATIONS).map(([key, loc]) => {
+    const [mx, my] = mapCoords(loc.lat, loc.lon);
+    return { key, sx: (mx - vb.x) * pxPerUnit, sy: (my - vb.y) * pxPerUnit };
+  });
+  const crowded = new Set();
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      if (Math.hypot(points[i].sx - points[j].sx, points[i].sy - points[j].sy) < MAP_LABEL_COLLISION_PX) {
+        crowded.add(points[i].key);
+        crowded.add(points[j].key);
+      }
+    }
+  }
+  points.forEach(({ key }) => {
+    const label = document.querySelector(`.map-pin[data-loc="${key}"] .map-label`);
+    if (!label) return;
+    label.style.display = (key === currentLocKey || !crowded.has(key)) ? "" : "none";
+  });
 }
 
 function svgPointFromClient(clientX, clientY) {
