@@ -55,10 +55,11 @@ wrong direction, most likely because a single offshore swell reading doesn't
 reflect conditions inside a sheltered fiord).
 
 - **`index.html`** — standalone dashboard, fetches live data client-side. Open it
-  directly or serve it via GitHub Pages. Location tabs at the top (your choice
-  persists via localStorage), plus a Map button showing every site plotted on
-  a simple NZ outline - click a dot to switch, same as the tabs. Each location
-  shows a Dive/No-dive verdict plus a 0-100 suitability score for today and
+  directly or serve it via GitHub Pages. Choose a location from the zoomable,
+  pannable map at the top (name tags next to each site's dot; scroll/pinch to
+  zoom, drag to pan) - your choice persists via localStorage, and the map can
+  be minimised once you've settled on a usual spot. Each location shows a
+  Dive/No-dive verdict plus a 0-100 suitability score for today and
   the next 3 days, the full breakdown for whichever conditions apply at that
   site (including high/low tide times and heights), a scrollable chart of the
   suitability score back to October 2021 (when swell data starts) - extending

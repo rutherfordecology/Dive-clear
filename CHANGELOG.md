@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.19
+- The map is now open by default instead of hidden behind a button, with a minimise control to collapse it when you don't need it.
+- Location names are now tags directly on the map next to each site's dot, instead of a separate row of buttons above it.
+- The map is now zoomable and pannable: scroll/pinch to zoom (anchored under the cursor or between your fingers), drag to pan, double-click to step in, and +/-/reset buttons for a mouse-free option. Zooming in is what makes the tightly-clustered sites (there are several close together around Auckland/Northland) readable, since name tags stay a constant on-screen size while zooming spreads the dots further apart.
+
 ## v1.18
 - Add a simple map view: a "Map" button next to the title shows an outline of NZ with every location plotted as a dot, the current selection highlighted. Click any dot to switch to that location, same as the tabs above it.
 
