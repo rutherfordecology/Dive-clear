@@ -145,7 +145,7 @@
   .map-wrap.minimized .map-body { display: none; }
   .map-wrap svg { width: 100%; max-width: 380px; height: auto; display: block; margin: 0 auto; touch-action: none; cursor: grab; }
   .map-land { fill: rgba(168,192,212,0.14); stroke: var(--card-border); stroke-width: 1.2; }
-  .map-dot { fill: var(--muted); stroke: var(--bg); stroke-width: 1.2; }
+  .map-dot { fill: var(--muted); stroke: var(--bg); }
   .map-pin { cursor: pointer; }
   .map-pin:hover .map-dot { fill: var(--text); }
   .map-dot.active { fill: var(--accent); stroke: var(--text); }
@@ -207,7 +207,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.20";
+const APP_VERSION = "1.21";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 // Each location's rule is either the user's own calibrated rule (Gisborne,
@@ -1016,22 +1016,41 @@ function mapViewBox() {
 }
 
 const MAP_LABEL_PX = 9.5; // constant on-screen label size, regardless of zoom
+const MAP_DOT_PX = 3.2; // constant on-screen dot radius, regardless of zoom
+const MAP_DOT_ACTIVE_PX = 5; // constant on-screen radius for the selected dot
+const MAP_DOT_STROKE_PX = 1.2; // constant on-screen dot outline width
+const MAP_LABEL_OFFSET_PX = 6; // constant on-screen gap between a dot and its label
 
 function applyMapViewBox() {
   const { x, y, w, h } = mapViewBox();
   document.getElementById("mapSvg").setAttribute("viewBox", `${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`);
-  updateMapLabelSizes(w);
+  updateMapMarkerSizes(w);
 }
 
 const MAP_LABEL_COLLISION_PX = 36; // hide a label if another dot is closer than this on screen
 
-function updateMapLabelSizes(viewBoxWidth) {
+function updateMapMarkerSizes(viewBoxWidth) {
   const svg = document.getElementById("mapSvg");
   const rect = svg.getBoundingClientRect();
   if (!rect.width) return;
   const pxPerUnit = rect.width / viewBoxWidth;
   const fontUnits = MAP_LABEL_PX / pxPerUnit;
   document.querySelectorAll(".map-label").forEach(el => el.setAttribute("font-size", fontUnits.toFixed(2)));
+  document.querySelectorAll(".map-dot").forEach(el => {
+    const active = el.classList.contains("active");
+    el.setAttribute("r", ((active ? MAP_DOT_ACTIVE_PX : MAP_DOT_PX) / pxPerUnit).toFixed(2));
+    el.setAttribute("stroke-width", (MAP_DOT_STROKE_PX / pxPerUnit).toFixed(2));
+  });
+  const labelOffsetUnits = MAP_LABEL_OFFSET_PX / pxPerUnit;
+  document.querySelectorAll(".map-pin").forEach(pin => {
+    const dot = pin.querySelector(".map-dot");
+    const label = pin.querySelector(".map-label");
+    if (!dot || !label) return;
+    const cx = parseFloat(dot.getAttribute("cx")), cy = parseFloat(dot.getAttribute("cy"));
+    const r = parseFloat(dot.getAttribute("r")) || 0;
+    label.setAttribute("x", (cx + r + labelOffsetUnits).toFixed(2));
+    label.setAttribute("y", (cy + fontUnits * 0.35).toFixed(2));
+  });
 
   // Hide labels that would collide with a neighbour's dot at the current
   // zoom, so the default zoomed-out view shows dots only rather than a
@@ -1101,11 +1120,11 @@ function renderMap() {
     const active = key === currentLocKey;
     return `
       <g class="map-pin" data-loc="${key}">
-        <circle class="map-dot${active ? " active" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${active ? 4 : 2.6}"></circle>
-        <text class="map-label${active ? " active" : ""}" x="${(x + 4.5).toFixed(1)}" y="${(y + 2.8).toFixed(1)}">${loc.name}</text>
+        <circle class="map-dot${active ? " active" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}"></circle>
+        <text class="map-label${active ? " active" : ""}">${loc.name}</text>
       </g>`;
   }).join("");
-  updateMapLabelSizes(mapViewBox().w);
+  updateMapMarkerSizes(mapViewBox().w);
 }
 
 function setupMapGestures() {

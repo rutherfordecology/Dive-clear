@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.21
+- Fix map dots (and their outline, and the gap to their label) growing huge at high zoom - they scaled with the map instead of staying a constant size like the v1.20 fix already did for label text. All three now stay a fixed on-screen size at any zoom level, so zooming in spreads dots apart to separate them instead of just inflating them into overlapping blobs.
+
 ## v1.20
 - Fix the default map view being an unreadable wall of overlapping name tags where sites cluster tightly (mainly around Auckland/Northland). Labels are now hidden whenever another dot sits within 36px of them on screen, showing only dots by default, and reappear progressively as zooming spreads the cluster apart. The currently selected site's tag always stays visible regardless of crowding.
 
