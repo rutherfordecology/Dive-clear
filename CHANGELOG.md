@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.22
+- Alerts now cover the forecast too: `dive_check.py` checks today plus the next 3 days (the same days shown on the dashboard's day cards) and sends one message listing every day that passes, so you hear about a good Saturday in advance instead of only on Saturday morning. Forecast days are marked as forecasts, and the wind and rain windows roll forward using forecast values exactly like the dashboard. Still at most one message per daily run, and nothing if no day passes.
+
 ## v1.21
 - Fix map dots (and their outline, and the gap to their label) growing huge at high zoom - they scaled with the map instead of staying a constant size like the v1.20 fix already did for label text. All three now stay a fixed on-screen size at any zoom level, so zooming in spreads dots apart to separate them instead of just inflating them into overlapping blobs.
 

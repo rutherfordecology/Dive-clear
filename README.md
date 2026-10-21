@@ -66,9 +66,12 @@ reflect conditions inside a sheltered fiord).
   into the forecast days with a hashed fill - 30 days at a time on desktop, 7
   on mobile, hold an arrow to scroll faster or use the double-arrow to jump a
   month at a time — and an Info dropdown with that site's specific rule.
-- **`dive_check.py`** — same rule in Python, for Gisborne only; sends a heads-up
-  (email and/or a phone push notification via [ntfy.sh](https://ntfy.sh)) only
-  on days that pass. Run it on a schedule since a static page can't notify you
+- **`dive_check.py`** — same rule in Python, for Gisborne only; checks today and
+  the next 3 forecast days (same as the dashboard's day cards) and sends one
+  heads-up (email and/or a phone push notification via [ntfy.sh](https://ntfy.sh))
+  listing any days that pass, with forecast days marked as such. Nothing is
+  sent if no day passes. A good forecast day will be mentioned again on each
+  run until it arrives, as long as it still looks good. Run it on a schedule since a static page can't notify you
   itself.
 - **`.github/workflows/dive-check.yml`** — runs `dive_check.py` daily via GitHub
   Actions, for free.
@@ -89,7 +92,7 @@ Email and push notifications are independent — set up either or both. Skip
 
 For push notifications: install the [ntfy app](https://ntfy.sh/) (iOS/Android),
 subscribe to the same topic name you put in `NTFY_TOPIC`, and you'll get a
-phone notification whenever conditions pass. Anyone who knows your topic name
+phone notification whenever today or a forecast day passes. Anyone who knows your topic name
 can send you a notification, so pick something unguessable.
 
 The workflow runs daily at 17:30 UTC (~5:30am NZ) and can also be triggered
