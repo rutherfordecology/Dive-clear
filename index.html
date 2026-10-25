@@ -207,7 +207,7 @@
 </div>
 
 <script>
-const APP_VERSION = "1.21";
+const APP_VERSION = "1.23";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
 
 // Each location's rule is either the user's own calibrated rule (Gisborne,
@@ -220,12 +220,12 @@ const LOCATIONS = {
     name: "Gisborne / Wainui", lat: -38.6623, lon: 178.0176,
     rule: {
       swell: { type: "directional", southM: 1.2, northM: 2.0 },
-      wind: { enabled: true, requiredDays: 4, windowDays: 5 },
+      wind: { enabled: true, requiredDays: 4, windowDays: 5, maxKmh: 25 },
       rain: { enabled: true, maxMm: 30, windowDays: 7 },
     },
     ruleText: [
       "Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.",
-      "Wind predominantly NW&rarr;N&rarr;NE for at least 4 of the last 5 days.",
+      "Wind predominantly NW&rarr;N&rarr;NE for at least 4 of the last 5 days, and not too strong: a day only counts if its maximum wind stays under 25 km/h (~13 kn). Strong wind from any direction stirs the water up.",
       "Less than 30 mm of rain in the trailing 7 days.",
     ],
     notes: [
@@ -239,12 +239,12 @@ const LOCATIONS = {
     name: "Makorori", lat: -38.65, lon: 178.13,
     rule: {
       swell: { type: "directional", southM: 1.2, northM: 2.0 },
-      wind: { enabled: true, requiredDays: 4, windowDays: 5 },
+      wind: { enabled: true, requiredDays: 4, windowDays: 5, maxKmh: 25 },
       rain: { enabled: true, maxMm: 30, windowDays: 7 },
     },
     ruleText: [
       "Swell threshold scales smoothly from 1.2 m (from due south) to 2.0 m (from due north), based on swell direction.",
-      "Wind predominantly NW&rarr;N&rarr;NE for at least 4 of the last 5 days.",
+      "Wind predominantly NW&rarr;N&rarr;NE for at least 4 of the last 5 days, and not too strong: a day only counts if its maximum wind stays under 25 km/h (~13 kn). Strong wind from any direction stirs the water up.",
       "Less than 30 mm of rain in the trailing 7 days.",
     ],
     notes: [
@@ -527,6 +527,16 @@ function isFavourableWindDirFor(rule, deg) {
   return diff <= halfWidth;
 }
 
+// A wind day ({ dir, kmh }) counts toward the rule only if it's from the
+// favourable arc AND, where the rule sets maxKmh, its max wind stayed under
+// that. Without the cap, a run of NW gales scored as perfect conditions even
+// though they chop the water up. 25 km/h for Gisborne/Makorori is a judgement
+// call from one bad stretch (Oct 2026), not calibrated against dive logs.
+function isFavourableWindDayFor(rule, w) {
+  if (w.dir == null || !isFavourableWindDirFor(rule, w.dir)) return false;
+  return rule.wind.maxKmh == null || w.kmh == null || w.kmh < rule.wind.maxKmh;
+}
+
 function swellThresholdFor(rule, deg) {
   if (rule.swell.type === "flat") return rule.swell.maxM;
   // Directional type (Gisborne/Makorori): smooth interpolation instead of a hard
@@ -559,7 +569,7 @@ function evaluateDay(rule, { sH, sDir, windWindow, rainTotal }) {
 
   let windPass = null, windScore = null, favourableCount = null;
   if (rule.wind.enabled) {
-    favourableCount = windWindow.filter(d => isFavourableWindDirFor(rule, d)).length;
+    favourableCount = windWindow.filter(w => isFavourableWindDayFor(rule, w)).length;
     windPass = favourableCount >= rule.wind.requiredDays;
     windScore = (favourableCount / rule.wind.windowDays) * 100;
     scores.push(windScore);
@@ -678,7 +688,7 @@ async function loadConditions() {
     `&hourly=sea_level_height_msl,swell_wave_height,swell_wave_direction` +
     `&timezone=auto&forecast_days=${FORECAST_DAYS}`;
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-    `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto&past_days=7&forecast_days=${FORECAST_DAYS}`;
+    `&daily=winddirection_10m_dominant,windspeed_10m_max,precipitation_sum&timezone=auto&past_days=7&forecast_days=${FORECAST_DAYS}`;
 
   const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
   if (!marineRes.ok || !weatherRes.ok) throw new Error("Open-Meteo request failed");
@@ -687,6 +697,7 @@ async function loadConditions() {
 
   const wTime = weather.daily.time;               // 7 past + today + next (FORECAST_DAYS-1)
   const windDir = weather.daily.winddirection_10m_dominant;
+  const windKmh = weather.daily.windspeed_10m_max;
   const rain = weather.daily.precipitation_sum;
   const todayIdxInWeather = wTime.length - FORECAST_DAYS; // index of "today" in the weather arrays
 
@@ -709,7 +720,7 @@ async function loadConditions() {
     const windDays = rule.wind.windowDays || 5;
     const windWindow = [];
     for (let k = weatherIdx - (windDays - 1); k <= weatherIdx; k++) {
-      if (k >= 0 && k < windDir.length) windWindow.push(windDir[k]);
+      if (k >= 0 && k < windDir.length) windWindow.push({ dir: windDir[k], kmh: windKmh[k] });
     }
 
     // Rain: 7 days ending on (and including) the day BEFORE this evaluation day
@@ -763,9 +774,11 @@ function render(results) {
       <div class="rule"><span class="label">Wind (${rule.wind.windowDays}d)</span>
         <span class="${r.windPass ? 'pass' : 'fail'}">${r.favourableCount}/${rule.wind.windowDays} days ${windArcLabel(rule)}</span>
       </div>
-      <div class="wind-chips">${r.windWindow.map(d => {
-        const ok = isFavourableWindDirFor(rule, d);
-        return `<span class="chip ${ok ? 'ok' : 'no'}">${compass(d)}</span>`;
+      <div class="wind-chips">${r.windWindow.map(w => {
+        const ok = isFavourableWindDayFor(rule, w);
+        const tooStrong = rule.wind.maxKmh != null && w.kmh != null && w.kmh >= rule.wind.maxKmh;
+        const kmhText = w.kmh != null ? `${Math.round(w.kmh)} km/h max` : 'speed unknown';
+        return `<span class="chip ${ok ? 'ok' : 'no'}" title="${kmhText}">${compass(w.dir)}${tooStrong ? ' ' + Math.round(w.kmh) : ''}</span>`;
       }).join('')}</div>
     ` : '';
 
@@ -837,7 +850,7 @@ async function loadHistory() {
     `&daily=swell_wave_height_max,swell_wave_direction_dominant&timezone=auto` +
     `&start_date=${startStr}&end_date=${endStr}`;
   const weatherUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
-    `&daily=winddirection_10m_dominant,precipitation_sum&timezone=auto` +
+    `&daily=winddirection_10m_dominant,windspeed_10m_max,precipitation_sum&timezone=auto` +
     `&start_date=${startStr}&end_date=${endStr}`;
 
   const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
@@ -847,6 +860,7 @@ async function loadHistory() {
 
   const time = weather.daily.time;
   const windDir = weather.daily.winddirection_10m_dominant;
+  const windKmh = weather.daily.windspeed_10m_max;
   const rain = weather.daily.precipitation_sum;
   const swellH = marine.daily.swell_wave_height_max;
   const swellDir = marine.daily.swell_wave_direction_dominant;
@@ -858,8 +872,11 @@ async function loadHistory() {
     const sDir = swellDir[i];
     if (sH == null || sDir == null) continue;
 
-    const windWindow = windDir.slice(Math.max(0, i - (windDays - 1)), i + 1);
-    if (rule.wind.enabled && windWindow.some(d => d == null)) continue;
+    const windWindow = [];
+    for (let k = Math.max(0, i - (windDays - 1)); k <= i; k++) {
+      windWindow.push({ dir: windDir[k], kmh: windKmh[k] });
+    }
+    if (rule.wind.enabled && windWindow.some(w => w.dir == null)) continue;
 
     const rainWindow = rain.slice(Math.max(0, i - 7), i);
     if (rule.rain.enabled && rainWindow.some(v => v == null)) continue;

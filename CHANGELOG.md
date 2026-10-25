@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.23
+- Fix Gisborne and Makorori showing DIVE through a run of strong NW wind. The wind rule only checked direction, so gale-force NW days (Oct 24-26, 2026: up to 38 km/h, gusting 65) counted as *favourable* even though they had stirred the water up. A day now only counts toward the wind rule if it's from the NW-N-NE arc **and** its maximum wind stayed under 25 km/h (~13 kn). The 25 km/h cap is a judgement call from that one bad stretch, not calibrated against dive logs - adjust `maxKmh` (dashboard) / `MAX_WIND_KMH` (alerts) if it's too strict or too lenient.
+- Wind chips on the day cards now show the speed on days that were too strong (e.g. "NW 35"), and every chip shows its max wind on hover. The alert email lists each day's max wind too.
+- Other locations' wind rules are unchanged (they were derived from photo data without a speed component).
+
 ## v1.22
 - Alerts now cover the forecast too: `dive_check.py` checks today plus the next 3 days (the same days shown on the dashboard's day cards) and sends one message listing every day that passes, so you hear about a good Saturday in advance instead of only on Saturday morning. Forecast days are marked as forecasts, and the wind and rain windows roll forward using forecast values exactly like the dashboard. Still at most one message per daily run, and nothing if no day passes.
 

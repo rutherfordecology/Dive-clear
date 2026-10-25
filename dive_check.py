@@ -15,7 +15,9 @@ Rule:
     based on swell direction, rather than a hard S/SW/SE-vs-N/NE/NW split
   - Wind predominantly NW->N->NE for the last 5 days
     (implemented as: at least 4 of the last 5 days' dominant wind direction
-    fell in that arc - this threshold is an assumption, not specified)
+    fell in that arc - this threshold is an assumption, not specified),
+    and a day only counts if its max wind stayed under 25 km/h - strong wind
+    from any direction stirs the water up
   - Less than 30 mm rain in the trailing 7 days
 
 Data source: Open-Meteo marine + weather forecast APIs (free, no key needed).
@@ -31,6 +33,10 @@ import requests
 
 LAT, LON = -38.6623, 178.0176
 
+# A favourable-direction day only counts if its max wind stayed under this.
+# Matches maxKmh in index.html; a judgement call, not calibrated.
+MAX_WIND_KMH = 25
+
 # Today + 3 days ahead, matching FORECAST_DAYS in index.html.
 FORECAST_DAYS = 4
 
@@ -44,7 +50,7 @@ MARINE_URL = (
 WEATHER_URL = (
     "https://api.open-meteo.com/v1/forecast"
     f"?latitude={LAT}&longitude={LON}"
-    "&daily=winddirection_10m_dominant,precipitation_sum"
+    "&daily=winddirection_10m_dominant,windspeed_10m_max,precipitation_sum"
     "&timezone=auto&past_days=7"
     f"&forecast_days={FORECAST_DAYS}"
 )
@@ -61,6 +67,12 @@ def is_favourable_wind_dir(deg):
     return d >= 292.5 or d < 67.5  # NW -> N -> NE arc
 
 
+def is_favourable_wind_day(w):
+    if w["dir"] is None or not is_favourable_wind_dir(w["dir"]):
+        return False
+    return w["kmh"] is None or w["kmh"] < MAX_WIND_KMH
+
+
 def swell_threshold(deg):
     d = ((deg % 360) + 360) % 360
     # Smooth interpolation instead of a hard S/SW/SE-vs-N/NE/NW split: the threshold
@@ -72,7 +84,7 @@ def swell_threshold(deg):
 
 
 def evaluate_day(date, swell_h, swell_dir, wind_window, rain_window):
-    favourable_count = sum(1 for d in wind_window if d is not None and is_favourable_wind_dir(d))
+    favourable_count = sum(1 for w in wind_window if is_favourable_wind_day(w))
     wind_pass = favourable_count >= 4
 
     rain_total = sum(v for v in rain_window if v is not None)
@@ -109,6 +121,7 @@ def fetch_conditions():
 
     w_time = weather["daily"]["time"]  # 7 past + today + (FORECAST_DAYS - 1) ahead
     wind_dir = weather["daily"]["winddirection_10m_dominant"]
+    wind_kmh = weather["daily"]["windspeed_10m_max"]
     rain = weather["daily"]["precipitation_sum"]
     today_idx = len(w_time) - FORECAST_DAYS
 
@@ -125,7 +138,7 @@ def fetch_conditions():
         # Rain: 7 days ending on the day BEFORE this day. Same as index.html.
         results.append(evaluate_day(
             w_time[i], swell_h[offset], swell_dir[offset],
-            wind_dir[max(0, i - 4):i + 1],
+            [{"dir": wind_dir[k], "kmh": wind_kmh[k]} for k in range(max(0, i - 4), i + 1)],
             rain[max(0, i - 7):i],
         ))
     return results
@@ -138,13 +151,16 @@ def day_label(r, offset):
 
 
 def build_day_section(r, offset):
-    wind_chips = ", ".join(compass(d) for d in r["wind_window"] if d is not None)
+    wind_chips = ", ".join(
+        f"{compass(w['dir'])} {w['kmh']:.0f}km/h" if w["kmh"] is not None else compass(w["dir"])
+        for w in r["wind_window"] if w["dir"] is not None
+    )
     tag = "" if offset == 0 else " - forecast"
     return (
         f"{day_label(r, offset)}{tag}: suitability {r['overall_score']}/100\n"
         f"  Swell: {r['swell_h']:.1f} m from {compass(r['swell_dir'])} "
         f"(needed < {r['threshold']:.2f} m)\n"
-        f"  Wind (5 days to this day): {r['favourable_count']}/5 days NW-N-NE ({wind_chips})\n"
+        f"  Wind (5 days to this day): {r['favourable_count']}/5 days NW-N-NE under {MAX_WIND_KMH} km/h ({wind_chips})\n"
         f"  Rain (7 days before): {r['rain_total']:.1f} mm (needed < 30 mm)\n"
     )
 
