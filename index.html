@@ -206,6 +206,7 @@
   <div class="version" id="version"></div>
 </div>
 
+<script src="tides.js"></script>
 <script>
 const APP_VERSION = "1.23";
 document.getElementById("version").textContent = `v${APP_VERSION}`;
@@ -218,6 +219,7 @@ document.getElementById("version").textContent = `v${APP_VERSION}`;
 const LOCATIONS = {
   gisborne: {
     name: "Gisborne / Wainui", lat: -38.6623, lon: 178.0176,
+    tide: { place: "Gisborne", port: "Gisborne" },
     rule: {
       swell: { type: "directional", southM: 1.2, northM: 2.0 },
       wind: { enabled: true, requiredDays: 4, windowDays: 5, maxKmh: 25 },
@@ -237,6 +239,7 @@ const LOCATIONS = {
   },
   makorori: {
     name: "Makorori", lat: -38.65, lon: 178.13,
+    tide: { place: "Gisborne", port: "Gisborne" },
     rule: {
       swell: { type: "directional", southM: 1.2, northM: 2.0 },
       wind: { enabled: true, requiredDays: 4, windowDays: 5, maxKmh: 25 },
@@ -254,6 +257,7 @@ const LOCATIONS = {
   },
   goatisland: {
     name: "Goat Island", lat: -36.2661, lon: 174.7860,
+    tide: { place: "Leigh", port: "Auckland", hwMin: -12, lwMin: -1, msl: 1.4, ratio: 0.79 },
     rule: {
       swell: { type: "flat", maxM: 0.6 },
       wind: { enabled: true, requiredDays: 3, windowDays: 5, centerDeg: 225, halfWidthDeg: 67.5 },
@@ -272,6 +276,7 @@ const LOCATIONS = {
   },
   poorknights: {
     name: "Poor Knights", lat: -35.5667, lon: 174.7060,
+    tide: { place: "Tutukaka Harbour", port: "Marsden Point", hwMin: -15, lwMin: -10, msl: 1.3, ratio: 1.0 },
     rule: {
       swell: { type: "flat", maxM: 1.6 },
       wind: { enabled: false },
@@ -287,6 +292,7 @@ const LOCATIONS = {
   },
   wellington: {
     name: "Wellington (Taputeranga)", lat: -41.3592, lon: 174.7670,
+    tide: { place: "Wellington", port: "Wellington" },
     rule: {
       swell: { type: "flat", maxM: 1.4 },
       wind: { enabled: true, requiredDays: 3, windowDays: 5 },
@@ -304,6 +310,7 @@ const LOCATIONS = {
   },
   porirua: {
     name: "Porirua", lat: -41.10, lon: 174.83,
+    tide: { place: "Mana Marina", port: "Port Taranaki", hwMin: 3, lwMin: -10, msl: 1.1, ratio: 0.39 },
     rule: {
       swell: { type: "flat", maxM: 0.9 },
       wind: { enabled: true, requiredDays: 3, windowDays: 5, centerDeg: 157.5, halfWidthDeg: 67.5 },
@@ -321,6 +328,7 @@ const LOCATIONS = {
   },
   bayofislands: {
     name: "Bay of Islands", lat: -35.19, lon: 174.30,
+    tide: { place: "Russell", port: "Marsden Point", hwMin: 0, lwMin: 4, msl: 1.4, ratio: 0.91 },
     rule: {
       swell: { enabled: false },
       wind: { enabled: false },
@@ -335,6 +343,7 @@ const LOCATIONS = {
   },
   kapiti: {
     name: "Kapiti", lat: -40.88, lon: 174.92,
+    tide: { place: "Rangatira Point", port: "Port Taranaki", hwMin: 3, lwMin: 1, msl: 0.9, ratio: 0.58 },
     rule: {
       swell: { type: "flat", maxM: 0.8 },
       wind: { enabled: false },
@@ -348,6 +357,7 @@ const LOCATIONS = {
   },
   torbay: {
     name: "Torbay", lat: -36.70, lon: 174.76,
+    tide: { place: "Murrays Bay", port: "Auckland", hwMin: -11, lwMin: 0, msl: 1.7, ratio: 0.93 },
     rule: {
       swell: { type: "flat", maxM: 0.25 },
       wind: { enabled: false },
@@ -361,6 +371,7 @@ const LOCATIONS = {
   },
   ohinau: {
     name: "Ohinau Island", lat: -36.7286, lon: 175.8813,
+    tide: { place: "Huruhi Harbour, Great Mercury", port: "Marsden Point", hwMin: -43, lwMin: -39, msl: 1.3, ratio: 0.91 },
     rule: {
       swell: { type: "flat", maxM: 1.0 },
       wind: { enabled: false },
@@ -375,6 +386,7 @@ const LOCATIONS = {
   },
   tutukaka: {
     name: "Tutukaka", lat: -35.58, lon: 174.52,
+    tide: { place: "Tutukaka Harbour", port: "Marsden Point", hwMin: -15, lwMin: -10, msl: 1.3, ratio: 1.0 },
     rule: {
       swell: { enabled: false },
       wind: { enabled: false },
@@ -388,6 +400,7 @@ const LOCATIONS = {
   },
   kaikoura: {
     name: "Kaikoura", lat: -42.42, lon: 173.70,
+    tide: { place: "Kaikōura", port: "Lyttelton", hwMin: 17, lwMin: 17, msl: 0.9, ratio: 0.74 },
     rule: {
       swell: { type: "flat", maxM: 1.5 },
       wind: { enabled: false },
@@ -401,6 +414,7 @@ const LOCATIONS = {
   },
   matauribay: {
     name: "Matauri Bay", lat: -34.99, lon: 173.93,
+    tide: { place: "Motukawanui Island", port: "Marsden Point", hwMin: -2, lwMin: 1, msl: 1.5, ratio: 0.95 },
     rule: {
       swell: { type: "flat", maxM: 1.4 },
       wind: { enabled: false },
@@ -414,6 +428,7 @@ const LOCATIONS = {
   },
   stewartisland: {
     name: "Stewart Island", lat: -46.91, lon: 168.13,
+    tide: { place: "Halfmoon Bay", port: "Bluff", hwMin: -6, lwMin: -19, msl: 1.6, ratio: 0.91 },
     rule: {
       swell: { type: "flat", maxM: 0.7 },
       wind: { enabled: false },
@@ -427,6 +442,7 @@ const LOCATIONS = {
   },
   akaroa: {
     name: "Akaroa", lat: -43.82, lon: 172.91,
+    tide: { place: "Akaroa", port: "Lyttelton", hwMin: -44, lwMin: -42, msl: 1.5, ratio: 0.96 },
     rule: {
       swell: { type: "flat", maxM: 1.6 },
       wind: { enabled: false },
@@ -440,6 +456,7 @@ const LOCATIONS = {
   },
   mangawhai: {
     name: "Mangawhai", lat: -36.10, lon: 174.59,
+    tide: { place: "Mangawhai Heads", port: "Marsden Point", hwMin: 4, lwMin: 2, msl: 1.4, ratio: 0.91 },
     rule: {
       swell: { type: "flat", maxM: 0.6 },
       wind: { enabled: false },
@@ -453,6 +470,7 @@ const LOCATIONS = {
   },
   farnorth: {
     name: "Far North", lat: -34.42, lon: 172.86,
+    tide: { place: "North Cape", port: "Marsden Point", hwMin: 13, lwMin: 17, msl: 1.4, ratio: 0.95 },
     rule: {
       swell: { type: "flat", maxM: 1.5 },
       wind: { enabled: false },
@@ -466,6 +484,7 @@ const LOCATIONS = {
   },
   waiheke: {
     name: "Waiheke Island", lat: -36.70, lon: 174.98,
+    tide: { place: "Mātiatia Bay", port: "Auckland", hwMin: -11, lwMin: -2, msl: 1.7, ratio: 0.96 },
     rule: {
       swell: { type: "flat", maxM: 0.3 },
       wind: { enabled: false },
@@ -479,6 +498,7 @@ const LOCATIONS = {
   },
   greatbarrier: {
     name: "Great Barrier Island", lat: -36.20, lon: 175.07,
+    tide: { place: "Nagle Cove", port: "Marsden Point", hwMin: -31, lwMin: -27, msl: 1.5, ratio: 1.0 },
     rule: {
       swell: { type: "flat", maxM: 0.9 },
       wind: { enabled: false },
@@ -667,25 +687,44 @@ function computePeriodSwell(rule, hourlyTimes, heights, dirs, dateStr) {
   });
 }
 
-function findTideExtremes(times, heights) {
-  const extremes = [];
-  for (let i = 1; i < heights.length - 1; i++) {
-    if (heights[i] > heights[i - 1] && heights[i] > heights[i + 1]) {
-      extremes.push({ time: times[i], height: heights[i], type: "high" });
-    } else if (heights[i] < heights[i - 1] && heights[i] < heights[i + 1]) {
-      extremes.push({ time: times[i], height: heights[i], type: "low" });
-    }
+// Mean sea level above chart datum at each LINZ standard port (NZ Nautical
+// Almanac 2026-27), needed to convert a height to a secondary port.
+const TIDE_PORT_MSL = {
+  "Gisborne": 1.26, "Auckland": 1.94, "Marsden Point": 1.63, "Wellington": 1.15,
+  "Lyttelton": 1.46, "Bluff": 1.77, "Port Taranaki": 1.99,
+};
+
+// Official LINZ highs and lows for one local date, in metres above chart datum
+// (the same basis as published tide tables). Secondary ports use LINZ's method:
+// the mean time difference, and height = MSL + (port height - port MSL) * ratio.
+function tidesForDate(tide, dateStr) {
+  const table = LINZ_TIDES[tide.port];
+  const dayMs = 86400000;
+  const base = Date.parse(dateStr + "T00:00:00Z");
+  const events = [];
+  // Neighbouring days too, since a time difference can move a tide across midnight.
+  for (let d = -1; d <= 1; d++) {
+    const iso = new Date(base + d * dayMs).toISOString().slice(0, 10);
+    (table[iso] ? table[iso].split(",") : []).forEach(item => {
+      const [stamp, h] = item.split(" ");
+      const type = stamp[0] === "H" ? "high" : "low";
+      const [hh, mm] = stamp.slice(1).split(":").map(Number);
+      const shift = (type === "high" ? tide.hwMin : tide.lwMin) || 0;
+      const when = new Date(base + d * dayMs + (hh * 60 + mm + shift) * 60000).toISOString().slice(0, 16);
+      const height = tide.ratio == null ? Number(h) : tide.msl + (Number(h) - TIDE_PORT_MSL[tide.port]) * tide.ratio;
+      if (dateOf(when) === dateStr) events.push({ time: when, height, type });
+    });
   }
-  return extremes;
+  return events.sort((a, b) => a.time.localeCompare(b.time));
 }
 
 const FORECAST_DAYS = 4; // today + 3 days ahead
 
 async function loadConditions() {
-  const { lat, lon, rule } = LOCATIONS[currentLocKey];
+  const { lat, lon, rule, tide } = LOCATIONS[currentLocKey];
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
     `&daily=swell_wave_height_max,swell_wave_direction_dominant` +
-    `&hourly=sea_level_height_msl,swell_wave_height,swell_wave_direction` +
+    `&hourly=swell_wave_height,swell_wave_direction` +
     `&timezone=auto&forecast_days=${FORECAST_DAYS}`;
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&daily=winddirection_10m_dominant,windspeed_10m_max,precipitation_sum&timezone=auto&past_days=7&forecast_days=${FORECAST_DAYS}`;
@@ -704,13 +743,6 @@ async function loadConditions() {
   const mTime = marine.daily.time;                 // today .. FORECAST_DAYS-1 days ahead
   const swellH = marine.daily.swell_wave_height_max;
   const swellDir = marine.daily.swell_wave_direction_dominant;
-
-  const tideExtremes = findTideExtremes(marine.hourly.time, marine.hourly.sea_level_height_msl);
-  const tidesByDate = {};
-  tideExtremes.forEach(e => {
-    const d = dateOf(e.time);
-    (tidesByDate[d] = tidesByDate[d] || []).push(e);
-  });
 
   const results = [];
   for (let offset = 0; offset < FORECAST_DAYS; offset++) {
@@ -742,7 +774,7 @@ async function loadConditions() {
       date: mTime[offset],
       sH, sDir, windWindow, rainTotal,
       ...evalResult,
-      tides: tidesByDate[mTime[offset]] || [],
+      tides: tidesForDate(tide, mTime[offset]),
       periods,
     });
   }
@@ -801,8 +833,8 @@ function render(results) {
       ${swellBlock}
       ${windBlock}
       ${rainBlock}
-      <div class="rule"><span class="label">Tides</span></div>
-      <div class="tide-list">${r.tides.map(t => `<span class="tide-chip ${t.type}">${t.type === 'high' ? 'High' : 'Low'} ${fmtTime(t.time)} (${t.height.toFixed(2)}m)</span>`).join('') || '<span class="tide-chip">No tide data</span>'}</div>
+      <div class="rule"><span class="label">Tides at ${LOCATIONS[currentLocKey].tide.place}</span></div>
+      <div class="tide-list">${r.tides.map(t => `<span class="tide-chip ${t.type}">${t.type === 'high' ? 'High' : 'Low'} ${fmtTime(t.time)} (${t.height.toFixed(1)}m)</span>`).join('') || '<span class="tide-chip">No tide data</span>'}</div>
     `;
     container.appendChild(card);
   });
@@ -1244,7 +1276,7 @@ function renderInfoPanel() {
 function refreshAll() {
   const loc = LOCATIONS[currentLocKey];
   document.getElementById("subLine").textContent =
-    `${loc.name} (${loc.lat}, ${loc.lon}) · data: Open-Meteo (marine + weather forecast)`;
+    `${loc.name} (${loc.lat}, ${loc.lon}) · data: Open-Meteo (marine + weather forecast); tides: LINZ, Crown Copyright Reserved, not for navigation`;
   renderInfoPanel();
 
   document.getElementById("status").style.display = "block";

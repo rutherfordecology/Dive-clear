@@ -61,7 +61,8 @@ reflect conditions inside a sheltered fiord).
   be minimised once you've settled on a usual spot. Each location shows a
   Dive/No-dive verdict plus a 0-100 suitability score for today and
   the next 3 days, the full breakdown for whichever conditions apply at that
-  site (including high/low tide times and heights), a scrollable chart of the
+  site (including official LINZ high/low tide times and heights from `tides.js`,
+  rebuilt with `update_tides.py`), a scrollable chart of the
   suitability score back to October 2021 (when swell data starts) - extending
   into the forecast days with a hashed fill - 30 days at a time on desktop, 7
   on mobile, hold an arrow to scroll faster or use the double-arrow to jump a

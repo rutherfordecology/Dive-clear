@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.24
+- Fix tide heights and times, which didn't match published tide tables at any location. Heights came from Open-Meteo's modelled sea level, measured from mean sea level rather than chart datum, so Gisborne read about 1 m too low (lows as low as -0.6 m). Times were also rounded to the hour and ran about 35 minutes early.
+- Tides now come from LINZ's official predictions, in metres above chart datum, in a new `tides.js` built by `update_tides.py` (LINZ's files can't be fetched from a browser). The data runs to the end of 2028; re-run the script with new years before then.
+- Sites away from a standard port use LINZ's secondary port differences (NZ Nautical Almanac 2026-27) for the nearest listed port, and each day card names it. These use mean time differences, so they're less exact than a standard port, especially Mana Marina (Porirua) and Rangatira Point (Kapiti), where LINZ lists time differences varying by hours. Makorori uses Gisborne, which has the closest table.
+
 ## v1.23
 - Fix Gisborne and Makorori showing DIVE through a run of strong NW wind. The wind rule only checked direction, so gale-force NW days (Oct 24-26, 2026: up to 38 km/h, gusting 65) counted as *favourable* even though they had stirred the water up. A day now only counts toward the wind rule if it's from the NW-N-NE arc **and** its maximum wind stayed under 25 km/h (~13 kn). The 25 km/h cap is a judgement call from that one bad stretch, not calibrated against dive logs - adjust `maxKmh` (dashboard) / `MAX_WIND_KMH` (alerts) if it's too strict or too lenient.
 - Wind chips on the day cards now show the speed on days that were too strong (e.g. "NW 35"), and every chip shows its max wind on hover. The alert email lists each day's max wind too.
