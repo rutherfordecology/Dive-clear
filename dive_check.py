@@ -27,6 +27,7 @@ import datetime
 import os
 import smtplib
 import sys
+import time
 from email.mime.text import MIMEText
 
 import requests
@@ -114,10 +115,28 @@ def evaluate_day(date, swell_h, swell_dir, wind_window, rain_window):
     }
 
 
+def get_json(url, attempts=4, wait=30):
+    """Fetches an Open-Meteo response, retrying on network errors, HTTP errors
+    and error bodies - a single hiccup used to fail the whole daily run."""
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = requests.get(url, timeout=30)
+            data = resp.json() if resp.content else {}
+            if resp.ok and "daily" in data:
+                return data
+            problem = f"HTTP {resp.status_code}: {data.get('reason', resp.text[:200])}"
+        except (requests.RequestException, ValueError) as e:
+            problem = f"{type(e).__name__}: {e}"
+        print(f"Attempt {attempt}/{attempts} failed for {url.split('?')[0]} - {problem}")
+        if attempt < attempts:
+            time.sleep(wait * attempt)
+    raise RuntimeError(f"Open-Meteo still failing after {attempts} attempts: {problem}")
+
+
 def fetch_conditions():
     """Returns one evaluated result per day: index 0 is today, then forecast days."""
-    marine = requests.get(MARINE_URL, timeout=30).json()
-    weather = requests.get(WEATHER_URL, timeout=30).json()
+    marine = get_json(MARINE_URL)
+    weather = get_json(WEATHER_URL)
 
     w_time = weather["daily"]["time"]  # 7 past + today + (FORECAST_DAYS - 1) ahead
     wind_dir = weather["daily"]["winddirection_10m_dominant"]

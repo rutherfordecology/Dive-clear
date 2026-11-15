@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.25
+- Fix the daily alert check failing outright on a single bad response from Open-Meteo (it failed on 15 Nov 2026 and sent nothing, then ran fine again on its own). `dive_check.py` now retries each request up to 4 times with increasing waits (30 s, 60 s, 90 s), treats an HTTP error or an Open-Meteo error body as a failure to retry, and logs each failed attempt with the reason so the Actions log shows what went wrong.
+- Fix the version shown at the bottom of the dashboard, which still said v1.23 after v1.24.
+
 ## v1.24
 - Fix tide heights and times, which didn't match published tide tables at any location. Heights came from Open-Meteo's modelled sea level, measured from mean sea level rather than chart datum, so Gisborne read about 1 m too low (lows as low as -0.6 m). Times were also rounded to the hour and ran about 35 minutes early.
 - Tides now come from LINZ's official predictions, in metres above chart datum, in a new `tides.js` built by `update_tides.py` (LINZ's files can't be fetched from a browser). The data runs to the end of 2028; re-run the script with new years before then.
